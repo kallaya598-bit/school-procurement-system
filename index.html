@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบเอกสารพัสดุโรงเรียน</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>ระบบเอกสารพัสดุโรงเรียน</h1>
+      <p>กรอกครั้งเดียว สร้างชุดเอกสารขอซื้อ/ขอจ้างเป็นไฟล์ Word</p>
+    </div>
+    <button id="generateBtn" class="primary">สร้างไฟล์ Word</button>
+  </header>
+
+  <main class="layout">
+    <form id="procurementForm" class="form">
+      <section>
+        <h2>ข้อมูลเอกสาร</h2>
+        <div class="grid four">
+          <label>วันที่<input name="day" type="number" min="1" max="31"></label>
+          <label>เดือน<select name="month"></select></label>
+          <label>พ.ศ.<input name="year" type="number"></label>
+          <label>ประเภท<select name="procurementType">
+            <option>ขอซื้อพัสดุ</option>
+            <option>ขอจ้างทำของ</option>
+            <option>ขอจ้างเหมาบริการ</option>
+          </select></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>ผู้รับผิดชอบและโครงการ</h2>
+        <div class="grid">
+          <label>คำนำหน้า<select name="requesterPrefix"><option>นาย</option><option>นาง</option><option>นางสาว</option></select></label>
+          <label>ชื่อผู้รับผิดชอบ<input name="requesterName" required></label>
+          <label>ตำแหน่ง<input name="requesterPosition" value="ครู"></label>
+          <label>งาน/โครงการ<input name="project" required></label>
+          <label>กลุ่มบริหาร<input name="adminGroup" placeholder="เช่น วิชาการ"></label>
+          <label>หน้าแผนปฏิบัติการ<input name="planPage"></label>
+          <label>งบประมาณทั้งสิ้น<input name="totalBudget" type="number" step="0.01"></label>
+          <label>ใช้จ่ายไปแล้ว<input name="spentBudget" type="number" step="0.01" value="0"></label>
+        </div>
+        <label>เพื่อ<textarea name="purpose" rows="2" placeholder="ระบุวัตถุประสงค์การจัดซื้อ/จัดจ้าง"></textarea></label>
+      </section>
+
+      <section>
+        <div class="section-title">
+          <h2>รายการพัสดุ/งานจ้าง</h2>
+          <button type="button" id="addItemBtn" class="secondary">เพิ่มรายการ</button>
+        </div>
+        <div class="table-wrap">
+          <table id="itemsTable">
+            <thead>
+              <tr>
+                <th>รายการ</th>
+                <th>จำนวน</th>
+                <th>ราคา/หน่วย</th>
+                <th>หมายเหตุ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="total">รวมทั้งสิ้น <strong id="totalText">0.00</strong> บาท</div>
+      </section>
+
+      <section>
+        <h2>เจ้าหน้าที่</h2>
+        <div class="grid">
+          <label>เจ้าหน้าที่พัสดุ<input name="procurementOfficerName" value="นายอดิศักดิ์ วนาใส"></label>
+          <label>หัวหน้าเจ้าหน้าที่<input name="headOfficerName" value="นายวิทวัช คำหา"></label>
+          <label>เจ้าหน้าที่การเงิน<input name="financeName" value="นางสุจิตรา นามพิมล"></label>
+          <label>เจ้าหน้าที่แผนงาน<input name="planOfficerName" value="นายธีรพงษ์ พิมเคณา"></label>
+          <label>ผู้เห็นชอบ<input name="approverName"></label>
+          <label>ผู้ช่วยฯ งบประมาณ<input name="budgetAssistantName" value="นางสุจิตรา นามพิมล"></label>
+          <label>รองผู้อำนวยการ<input name="deputyName" value="นายธนกร วรรณชัย"></label>
+          <label>ผู้อำนวยการ<input name="directorName" value="นางสาวสายฝน ทวีแก้ว"></label>
+          <label>กำหนดส่งมอบภายใน (วัน)<input name="deliveryDays" type="number" value="7"></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>คณะกรรมการกำหนดราคากลาง</h2>
+        <p class="hint">ใช้ในหน้าขออนุมัติแต่งตั้งคณะกรรมการ, หน้าขอความเห็นชอบราคากลาง และหน้าราคากลางแนบท้าย</p>
+        <div class="grid">
+          <label>ประธานกรรมการ<input name="priceCommittee1Name"></label>
+          <label>ตำแหน่ง<input name="priceCommittee1Position" value="ครู"></label>
+          <label>กรรมการ 1<input name="priceCommittee2Name"></label>
+          <label>ตำแหน่ง<input name="priceCommittee2Position" value="ครู"></label>
+          <label>กรรมการ 2<input name="priceCommittee3Name"></label>
+          <label>ตำแหน่ง<input name="priceCommittee3Position" value="ครู"></label>
+        </div>
+      </section>
+
+      <section>
+        <h2>คณะกรรมการตรวจรับพัสดุ</h2>
+        <p class="hint">ใช้ในหน้าขออนุมัติแต่งตั้งคณะกรรมการ ส่วนคณะกรรมการตรวจรับพัสดุ</p>
+        <div class="grid">
+          <label>ประธานกรรมการ/ผู้ตรวจรับพัสดุ<input name="inspectCommittee1Name"></label>
+          <label>ตำแหน่ง<input name="inspectCommittee1Position" value="ครู"></label>
+          <label>กรรมการ 1<input name="inspectCommittee2Name"></label>
+          <label>ตำแหน่ง<input name="inspectCommittee2Position" value="ครู"></label>
+          <label>กรรมการ 2<input name="inspectCommittee3Name"></label>
+          <label>ตำแหน่ง<input name="inspectCommittee3Position" value="ครู"></label>
+        </div>
+      </section>
+    </form>
+
+    <aside class="panel">
+      <h2>ไฟล์ที่สร้าง</h2>
+      <p id="status">ยังไม่มีไฟล์ที่สร้างในรอบนี้</p>
+      <a id="downloadLink" class="download" href="#" hidden>ดาวน์โหลดไฟล์ Word</a>
+      <hr>
+      <button id="saveDraftBtn" class="secondary full">บันทึกข้อมูลไว้ในเครื่องนี้</button>
+      <button id="loadDraftBtn" class="secondary full">เรียกข้อมูลล่าสุด</button>
+      <button id="clearBtn" class="ghost full">ล้างฟอร์ม</button>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

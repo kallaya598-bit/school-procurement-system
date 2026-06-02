@@ -326,39 +326,62 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
 
 
 def add_summary_table(doc, project_name, total_amount, font_size=14):
-    """Add a summary table showing project summary with 'ดังเอกสารที่แนบมา' header"""
-    paragraph(doc, "ดังเอกสารที่แนบมา", bold=True, size=font_size, after=2)
+    """Add a summary table showing project summary as single row"""
+    paragraph(doc, "สำหรับใช้ในโรงเรียนนายางกลักพิทยาคม โดยมีรายละเอียดดังนี้", first_line=1.25, size=font_size, after=0)
     
-    table = doc.add_table(rows=3, cols=2)
+    # Create summary table similar to items table
+    headers = ["ที่", "รายการ", "จำนวนหน่วย", "ราคา/หน่วย", "จำนวนเงิน", "หมายเหตุ"]
+    widths = [1.0, 7.6, 2.0, 2.35, 3.0, 2.75]
+    
+    table = doc.add_table(rows=3, cols=len(headers))
     table.style = "Table Grid"
-    set_table_width(table, 18.7)
+    set_table_width(table, sum(widths))
     set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
     
-    # Set column widths
-    for row in table.rows:
-        for idx, cell in enumerate(row.cells):
-            set_cell_width(cell, 9.35)
-            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    # Header row
+    for i, header in enumerate(headers):
+        cell = table.cell(0, i)
+        cell.text = header
+        set_cell_shading(cell, "D9EAF7")
+        set_cell_width(cell, widths[i])
+        for p in cell.paragraphs:
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in p.runs:
+                run.bold = True
+                apply_run_font(run, size=font_size, bold=True)
+        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     
-    # Row 1: Headers
-    header_left = table.cell(0, 0)
-    header_right = table.cell(0, 1)
-    cell_paragraph(header_left, "รายการ", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    cell_paragraph(header_right, "ข้อมูล", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_shading(header_left, "D9EAF7")
-    set_cell_shading(header_right, "D9EAF7")
+    # Data row - summary only
+    values = [
+        "1",
+        project_name,
+        "1",
+        fmt_money(total_amount),
+        fmt_money(total_amount),
+        ""
+    ]
+    for col, value in enumerate(values):
+        cell = table.cell(1, col)
+        set_cell_width(cell, widths[col])
+        cell.text = value
+        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        for p in cell.paragraphs:
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT if col == 1 else WD_ALIGN_PARAGRAPH.CENTER
+            for run in p.runs:
+                apply_run_font(run, size=font_size)
     
-    # Row 2: Project count
-    cell_paragraph(table.cell(1, 0), "จำนวนโครงการ", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
-    cell_paragraph(table.cell(1, 1), "1", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
-    
-    # Row 3: Project details and amount
-    details_text = f"โครงการ: {project_name}\nจำนวนเงินทั้งสิ้น: {fmt_money(total_amount)} บาท"
-    details_cell = table.cell(2, 0)
-    details_cell.merge(table.cell(2, 1))
-    cell_paragraph(details_cell, details_text, size=font_size, align=WD_ALIGN_PARAGRAPH.LEFT)
-    
-    paragraph(doc, "", after=2)
+    # Total row
+    total_row = table.rows[2]
+    total_row.cells[0].merge(total_row.cells[3])
+    total_row.cells[0].text = "รวม"
+    total_row.cells[4].text = fmt_money(total_amount)
+    total_row.cells[5].text = ""
+    for i, cell in enumerate(total_row.cells):
+        set_cell_shading(cell, "F2F2F2")
+        for p in cell.paragraphs:
+            p.alignment = WD_ALIGN_PARAGRAPH.RIGHT if i < 4 else WD_ALIGN_PARAGRAPH.CENTER
+            for run in p.runs:
+                apply_run_font(run, size=font_size, bold=True)
 
 
 def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
@@ -453,6 +476,9 @@ def build_docx(data):
     # Add summary table after memo header
     add_summary_table(doc, data["project"], total, font_size=14)
     
+    # Add summary table with proper format
+    add_summary_table(doc, data["project"], total, font_size=compact_size)
+    
     p = doc.add_paragraph()
     p.paragraph_format.first_line_indent = Cm(1.25)
     p.paragraph_format.space_after = Pt(1)
@@ -476,7 +502,6 @@ def build_docx(data):
         (" บาท ขอเสนอรายการประมาณการ เพื่อ ", False),
         (data["purpose"], True),
     ], size=compact_size)
-    paragraph(doc, "สำหรับใช้ในโรงเรียนนายางกลักพิทยาคม โดยมีรายละเอียดดังนี้", first_line=1.25, size=compact_size, after=1)
     add_items_table(doc, items, min_rows=3, font_size=14, compact=True)
     paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size)
     paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0)
@@ -606,3 +631,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

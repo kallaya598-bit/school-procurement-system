@@ -1,4 +1,4 @@
-﻿import io
+import io
 import json
 import os
 import re
@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent
 GENERATED_DIR = BASE_DIR / "generated"
 GENERATED_DIR.mkdir(exist_ok=True)
 FONT_NAME = "TH SarabunPSK"
-GARUDA_PATH = BASE_DIR / "templates" / "image2.png"
+GARUDA_PATH = BASE_DIR / "images.jpg"
 
 THAI_MONTHS = [
     "",
@@ -325,6 +325,42 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
     paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=2, size=body_size)
 
 
+def add_summary_table(doc, project_name, total_amount, font_size=14):
+    """Add a summary table showing project summary with 'ดังเอกสารที่แนบมา' header"""
+    paragraph(doc, "ดังเอกสารที่แนบมา", bold=True, size=font_size, after=2)
+    
+    table = doc.add_table(rows=3, cols=2)
+    table.style = "Table Grid"
+    set_table_width(table, 18.7)
+    set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
+    
+    # Set column widths
+    for row in table.rows:
+        for idx, cell in enumerate(row.cells):
+            set_cell_width(cell, 9.35)
+            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    
+    # Row 1: Headers
+    header_left = table.cell(0, 0)
+    header_right = table.cell(0, 1)
+    cell_paragraph(header_left, "รายการ", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+    cell_paragraph(header_right, "ข้อมูล", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+    set_cell_shading(header_left, "D9EAF7")
+    set_cell_shading(header_right, "D9EAF7")
+    
+    # Row 2: Project count
+    cell_paragraph(table.cell(1, 0), "จำนวนโครงการ", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
+    cell_paragraph(table.cell(1, 1), "1", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
+    
+    # Row 3: Project details and amount
+    details_text = f"โครงการ: {project_name}\nจำนวนเงินทั้งสิ้น: {fmt_money(total_amount)} บาท"
+    details_cell = table.cell(2, 0)
+    details_cell.merge(table.cell(2, 1))
+    cell_paragraph(details_cell, details_text, size=font_size, align=WD_ALIGN_PARAGRAPH.LEFT)
+    
+    paragraph(doc, "", after=2)
+
+
 def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
     table = doc.add_table(rows=3, cols=2)
     table.style = "Table Grid"
@@ -413,6 +449,10 @@ def build_docx(data):
     compact_size = 16
     compact_signature_size = 14
     add_memo_header(doc, "ขอซื้อพัสดุ/ขอจ้างทำของ/ขอจ้างเหมาบริการ", "ศธ04299.37/จัดซื้อจัดจ้าง", data, body_size=compact_size, title_size=22, garuda_position="left")
+    
+    # Add summary table after memo header
+    add_summary_table(doc, data["project"], total, font_size=14)
+    
     p = doc.add_paragraph()
     p.paragraph_format.first_line_indent = Cm(1.25)
     p.paragraph_format.space_after = Pt(1)
@@ -566,5 +606,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -11,7 +11,7 @@ from urllib.parse import quote, unquote, urlparse
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
@@ -189,7 +189,12 @@ def paragraph(doc, text="", bold=False, align=None, size=16, before=0, after=0, 
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(before)
     p.paragraph_format.space_after = Pt(after)
-    p.paragraph_format.line_spacing = line_spacing
+    if line_spacing == 1.5:
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+    elif line_spacing == 2.0:
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+    else:
+        p.paragraph_format.line_spacing = line_spacing
     if first_line is not None:
         p.paragraph_format.first_line_indent = Cm(first_line)
     if align is not None:

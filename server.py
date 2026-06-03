@@ -350,7 +350,14 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
         run_title.bold = True
         apply_run_font(run_title, size=title_size, bold=True)
     else:
-        # หน้าอื่น: บันทึกข้อความ กึ่งกลาง
+        # หน้าอื่น: ตราครุฑซ้าย (แยก paragraph) + บันทึกข้อความ กึ่งกลาง
+        if GARUDA_PATH.exists():
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p_img.paragraph_format.space_before = Pt(0)
+            p_img.paragraph_format.space_after = Pt(0)
+            p_img.paragraph_format.line_spacing = 1.0
+            p_img.add_run().add_picture(str(GARUDA_PATH), width=Cm(2.02), height=Cm(2.25))
         paragraph(doc, 'บันทึกข้อความ', bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=0)
 
     paragraph(doc, "ส่วนราชการ  โรงเรียนนายางกลักพิทยาคม  อำเภอเทพสถิต  จังหวัดชัยภูมิ", bold=True, size=body_size, after=0)

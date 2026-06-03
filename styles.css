@@ -161,6 +161,13 @@ body {
   border: 1px solid rgba(255,255,255,.2);
 }
 .btn-ghost:hover { background: rgba(255,255,255,.2); }
+/* btn-ghost ใน card (พื้นขาว) */
+.card .btn-ghost {
+  background: var(--navy);
+  color: white;
+  border: none;
+}
+.card .btn-ghost:hover { background: var(--navy-mid); }
 .btn-sm { padding: .4rem .9rem; font-size: .8rem; }
 .btn.full { width: 100%; justify-content: center; }
 .btn-danger-ghost {
@@ -286,14 +293,14 @@ body {
 #itemsTable td input {
   font-family: 'Sarabun', sans-serif;
   width: 100%;
-  border: 1.5px solid transparent;
+  border: 1.5px solid var(--border);
   border-radius: 6px;
   padding: .4rem .6rem;
   font-size: .9rem;
-  background: transparent;
+  background: #fafbfc;
   transition: border-color .2s, background .2s;
 }
-#itemsTable td input:focus { outline: none; border-color: var(--navy-light); background: white; }
+#itemsTable td input:focus { outline: none; border-color: var(--navy-light); background: white; box-shadow: 0 0 0 3px rgba(37,99,168,.1); }
 .td-amount { text-align: right; font-weight: 600; color: var(--navy); padding: .4rem .9rem; }
 .btn-del {
   background: none; border: none; cursor: pointer;

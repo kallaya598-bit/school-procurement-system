@@ -3,123 +3,272 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบเอกสารพัสดุโรงเรียน</title>
+  <title>ระบบเอกสารพัสดุ - กลุ่มงานบริหารงานงบประมาณ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>ระบบเอกสารพัสดุโรงเรียน</h1>
-      <p>กรอกครั้งเดียว สร้างชุดเอกสารขอซื้อ/ขอจ้างเป็นไฟล์ Word</p>
+
+  <!-- HEADER -->
+  <header class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <div class="hero-logo-wrap">
+        <img src="logo.png" alt="โลโก้โรงเรียน" class="hero-logo">
+      </div>
+      <div class="hero-text">
+        <div class="hero-org">กลุ่มงานบริหารงานงบประมาณ</div>
+        <h1 class="hero-title">ระบบเอกสารพัสดุ</h1>
+        <div class="hero-sub">โรงเรียนนายางกลักพิทยาคม</div>
+        <p class="hero-desc">กรอกครั้งเดียว · สร้างชุดเอกสารขอซื้อ/ขอจ้างครบชุด</p>
+      </div>
     </div>
-    <button id="generateBtn" class="primary">สร้างไฟล์ Word</button>
   </header>
 
-  <main class="layout">
-    <form id="procurementForm" class="form">
-      <section>
-        <h2>ข้อมูลเอกสาร</h2>
-        <div class="grid four">
-          <label>วันที่<input name="day" type="number" min="1" max="31"></label>
-          <label>เดือน<select name="month"></select></label>
-          <label>พ.ศ.<input name="year" type="number"></label>
-          <label>ประเภท<select name="procurementType">
-            <option>ขอซื้อพัสดุ</option>
-            <option>ขอจ้างทำของ</option>
-            <option>ขอจ้างเหมาบริการ</option>
-          </select></label>
-        </div>
-      </section>
+  <!-- ACTION BAR -->
+  <div class="action-bar">
+    <div class="action-bar-inner">
+      <div class="action-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="status">พร้อมสร้างเอกสาร</span>
+      </div>
+      <div class="action-btns">
+        <button id="generateBtn" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          สร้างไฟล์ Word
+        </button>
+        <button id="generatePdfBtn" class="btn btn-pdf">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15v-4"/><path d="M12 15v-6"/><path d="M15 15v-2"/></svg>
+          สร้างไฟล์ PDF
+        </button>
+      </div>
+    </div>
+  </div>
 
-      <section>
-        <h2>ผู้รับผิดชอบและโครงการ</h2>
-        <div class="grid">
-          <label>คำนำหน้า<select name="requesterPrefix"><option>นาย</option><option>นาง</option><option>นางสาว</option></select></label>
-          <label>ชื่อผู้รับผิดชอบ<input name="requesterName" required></label>
-          <label>ตำแหน่ง<input name="requesterPosition" value="ครู"></label>
-          <label>งาน/โครงการ<input name="project" required></label>
-          <label>กลุ่มบริหาร<input name="adminGroup" placeholder="เช่น วิชาการ"></label>
-          <label>หน้าแผนปฏิบัติการ<input name="planPage"></label>
-          <label>งบประมาณทั้งสิ้น<input name="totalBudget" type="number" step="0.01"></label>
-          <label>ใช้จ่ายไปแล้ว<input name="spentBudget" type="number" step="0.01" value="0"></label>
-        </div>
-        <label>เพื่อ<textarea name="purpose" rows="2" placeholder="ระบุวัตถุประสงค์การจัดซื้อ/จัดจ้าง"></textarea></label>
-      </section>
+  <main class="main-layout">
+    <!-- FORM -->
+    <form id="procurementForm" class="form-area">
 
-      <section>
-        <div class="section-title">
-          <h2>รายการพัสดุ/งานจ้าง</h2>
-          <button type="button" id="addItemBtn" class="secondary">เพิ่มรายการ</button>
+      <!-- Section 1: เอกสาร -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">📋</div>
+          <div>
+            <h2>ข้อมูลเอกสาร</h2>
+            <p>วันที่ และประเภทการจัดซื้อจัดจ้าง</p>
+          </div>
+        </div>
+        <div class="grid-4">
+          <label class="field">
+            <span>วันที่</span>
+            <input name="day" type="number" min="1" max="31">
+          </label>
+          <label class="field">
+            <span>เดือน</span>
+            <select name="month"></select>
+          </label>
+          <label class="field">
+            <span>พ.ศ.</span>
+            <input name="year" type="number">
+          </label>
+          <label class="field">
+            <span>ประเภท</span>
+            <select name="procurementType">
+              <option>ขอซื้อพัสดุ</option>
+              <option>ขอจ้างทำของ</option>
+              <option>ขอจ้างเหมาบริการ</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- Section 2: โครงการ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">🏫</div>
+          <div>
+            <h2>ผู้รับผิดชอบและโครงการ</h2>
+            <p>ข้อมูลผู้ยื่นเรื่องและงบประมาณ</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>คำนำหน้า</span>
+            <select name="requesterPrefix">
+              <option>นาย</option><option>นาง</option><option>นางสาว</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>ชื่อผู้รับผิดชอบ <span class="req">*</span></span>
+            <input name="requesterName" required placeholder="ชื่อ-นามสกุล">
+          </label>
+          <label class="field">
+            <span>ตำแหน่ง</span>
+            <input name="requesterPosition" value="ครู">
+          </label>
+          <label class="field">
+            <span>งาน/โครงการ <span class="req">*</span></span>
+            <input name="project" required placeholder="ชื่อโครงการ">
+          </label>
+          <label class="field">
+            <span>กลุ่มบริหาร</span>
+            <input name="adminGroup" placeholder="เช่น วิชาการ">
+          </label>
+          <label class="field">
+            <span>หน้าแผนปฏิบัติการ</span>
+            <input name="planPage">
+          </label>
+          <label class="field">
+            <span>งบประมาณทั้งสิ้น (บาท)</span>
+            <input name="totalBudget" type="number" step="0.01">
+          </label>
+          <label class="field">
+            <span>ใช้จ่ายไปแล้ว (บาท)</span>
+            <input name="spentBudget" type="number" step="0.01" value="0">
+          </label>
+        </div>
+        <label class="field full">
+          <span>วัตถุประสงค์ (เพื่อ...)</span>
+          <textarea name="purpose" rows="2" placeholder="ระบุวัตถุประสงค์การจัดซื้อ/จัดจ้าง"></textarea>
+        </label>
+      </div>
+
+      <!-- Section 3: รายการ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">📦</div>
+          <div>
+            <h2>รายการพัสดุ/งานจ้าง</h2>
+            <p>เพิ่มรายการที่ต้องการจัดซื้อจัดจ้าง</p>
+          </div>
+          <button type="button" id="addItemBtn" class="btn btn-ghost btn-sm">+ เพิ่มรายการ</button>
         </div>
         <div class="table-wrap">
           <table id="itemsTable">
             <thead>
               <tr>
                 <th>รายการ</th>
-                <th>จำนวน</th>
-                <th>ราคา/หน่วย</th>
-                <th>หมายเหตุ</th>
+                <th class="num">จำนวน</th>
+                <th class="num">ราคา/หน่วย</th>
+                <th class="num">จำนวนเงิน</th>
+                <th class="num">หมายเหตุ</th>
                 <th></th>
               </tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
-        <div class="total">รวมทั้งสิ้น <strong id="totalText">0.00</strong> บาท</div>
-      </section>
-
-      <section>
-        <h2>เจ้าหน้าที่</h2>
-        <div class="grid">
-          <label>เจ้าหน้าที่พัสดุ<input name="procurementOfficerName" value="นายอดิศักดิ์ วนาใส"></label>
-          <label>หัวหน้าเจ้าหน้าที่<input name="headOfficerName" value="นายวิทวัช คำหา"></label>
-          <label>เจ้าหน้าที่การเงิน<input name="financeName" value="นางสุจิตรา นามพิมล"></label>
-          <label>เจ้าหน้าที่แผนงาน<input name="planOfficerName" value="นายธีรพงษ์ พิมเคณา"></label>
-          <label>ผู้เห็นชอบ<input name="approverName"></label>
-          <label>ผู้ช่วยฯ งบประมาณ<input name="budgetAssistantName" value="นางสุจิตรา นามพิมล"></label>
-          <label>รองผู้อำนวยการ<input name="deputyName" value="นายธนกร วรรณชัย"></label>
-          <label>ผู้อำนวยการ<input name="directorName" value="นางสาวสายฝน ทวีแก้ว"></label>
-          <label>กำหนดส่งมอบภายใน (วัน)<input name="deliveryDays" type="number" value="7"></label>
+        <div class="total-bar">
+          <span>รวมทั้งสิ้น</span>
+          <strong id="totalText">0.00</strong>
+          <span>บาท</span>
         </div>
-      </section>
+      </div>
 
-      <section>
-        <h2>คณะกรรมการกำหนดราคากลาง</h2>
-        <p class="hint">ใช้ในหน้าขออนุมัติแต่งตั้งคณะกรรมการ, หน้าขอความเห็นชอบราคากลาง และหน้าราคากลางแนบท้าย</p>
-        <div class="grid">
-          <label>ประธานกรรมการ<input name="priceCommittee1Name"></label>
-          <label>ตำแหน่ง<input name="priceCommittee1Position" value="ครู"></label>
-          <label>กรรมการ 1<input name="priceCommittee2Name"></label>
-          <label>ตำแหน่ง<input name="priceCommittee2Position" value="ครู"></label>
-          <label>กรรมการ 2<input name="priceCommittee3Name"></label>
-          <label>ตำแหน่ง<input name="priceCommittee3Position" value="ครู"></label>
+      <!-- Section 4: เจ้าหน้าที่ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">👤</div>
+          <div>
+            <h2>เจ้าหน้าที่และผู้ลงนาม</h2>
+            <p>ข้อมูลเจ้าหน้าที่ผู้เกี่ยวข้อง</p>
+          </div>
         </div>
-      </section>
+        <div class="grid-2">
+          <label class="field"><span>เจ้าหน้าที่พัสดุ</span><input name="procurementOfficerName" value="นายอดิศักดิ์ วนาใส"></label>
+          <label class="field"><span>หัวหน้าเจ้าหน้าที่</span><input name="headOfficerName" value="นายวิทวัช คำหา"></label>
+          <label class="field"><span>เจ้าหน้าที่การเงิน</span><input name="financeName" value="นางสุจิตรา นามพิมล"></label>
+          <label class="field"><span>เจ้าหน้าที่แผนงาน</span><input name="planOfficerName" value="นายธีรพงษ์ พิมเคณา"></label>
+          <label class="field"><span>ผู้เห็นชอบ</span><input name="approverName"></label>
+          <label class="field"><span>ผู้ช่วยฯ งบประมาณ</span><input name="budgetAssistantName" value="นางสุจิตรา นามพิมล"></label>
+          <label class="field"><span>รองผู้อำนวยการ</span><input name="deputyName" value="นายธนกร วรรณชัย"></label>
+          <label class="field"><span>ผู้อำนวยการ</span><input name="directorName" value="นางสาวสายฝน ทวีแก้ว"></label>
+          <label class="field"><span>กำหนดส่งมอบ (วัน)</span><input name="deliveryDays" type="number" value="7"></label>
+        </div>
+      </div>
 
-      <section>
-        <h2>คณะกรรมการตรวจรับพัสดุ</h2>
-        <p class="hint">ใช้ในหน้าขออนุมัติแต่งตั้งคณะกรรมการ ส่วนคณะกรรมการตรวจรับพัสดุ</p>
-        <div class="grid">
-          <label>ประธานกรรมการ/ผู้ตรวจรับพัสดุ<input name="inspectCommittee1Name"></label>
-          <label>ตำแหน่ง<input name="inspectCommittee1Position" value="ครู"></label>
-          <label>กรรมการ 1<input name="inspectCommittee2Name"></label>
-          <label>ตำแหน่ง<input name="inspectCommittee2Position" value="ครู"></label>
-          <label>กรรมการ 2<input name="inspectCommittee3Name"></label>
-          <label>ตำแหน่ง<input name="inspectCommittee3Position" value="ครู"></label>
+      <!-- Section 5: คณะกรรมการราคากลาง -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">⚖️</div>
+          <div>
+            <h2>คณะกรรมการกำหนดราคากลาง</h2>
+            <p>ใช้ในหน้าขออนุมัติแต่งตั้งและหน้าขอความเห็นชอบราคากลาง</p>
+          </div>
         </div>
-      </section>
+        <div class="grid-2">
+          <label class="field"><span>ประธานกรรมการ</span><input name="priceCommittee1Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="priceCommittee1Position" value="ครู"></label>
+          <label class="field"><span>กรรมการ 1</span><input name="priceCommittee2Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="priceCommittee2Position" value="ครู"></label>
+          <label class="field"><span>กรรมการ 2</span><input name="priceCommittee3Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="priceCommittee3Position" value="ครู"></label>
+        </div>
+      </div>
+
+      <!-- Section 6: คณะกรรมการตรวจรับ -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon">✅</div>
+          <div>
+            <h2>คณะกรรมการตรวจรับพัสดุ</h2>
+            <p>ใช้ในหน้าขออนุมัติแต่งตั้งคณะกรรมการตรวจรับพัสดุ</p>
+          </div>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>ประธาน/ผู้ตรวจรับ</span><input name="inspectCommittee1Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="inspectCommittee1Position" value="ครู"></label>
+          <label class="field"><span>กรรมการ 1</span><input name="inspectCommittee2Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="inspectCommittee2Position" value="ครู"></label>
+          <label class="field"><span>กรรมการ 2</span><input name="inspectCommittee3Name"></label>
+          <label class="field"><span>ตำแหน่ง</span><input name="inspectCommittee3Position" value="ครู"></label>
+        </div>
+      </div>
+
     </form>
 
-    <aside class="panel">
-      <h2>ไฟล์ที่สร้าง</h2>
-      <p id="status">ยังไม่มีไฟล์ที่สร้างในรอบนี้</p>
-      <a id="downloadLink" class="download" href="#" hidden>ดาวน์โหลดไฟล์ Word</a>
-      <hr>
-      <button id="saveDraftBtn" class="secondary full">บันทึกข้อมูลไว้ในเครื่องนี้</button>
-      <button id="loadDraftBtn" class="secondary full">เรียกข้อมูลล่าสุด</button>
-      <button id="clearBtn" class="ghost full">ล้างฟอร์ม</button>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="card sticky-card">
+        <h3>📁 ไฟล์ที่สร้าง</h3>
+        <div id="fileResult" class="file-result">
+          <div class="file-empty">ยังไม่มีไฟล์ที่สร้าง</div>
+        </div>
+        <hr class="divider">
+        <div class="sidebar-btns">
+          <button id="saveDraftBtn" class="btn btn-ghost full">💾 บันทึกข้อมูล</button>
+          <button id="loadDraftBtn" class="btn btn-ghost full">📂 เรียกข้อมูลล่าสุด</button>
+          <button id="clearBtn" class="btn btn-danger-ghost full">🗑️ ล้างฟอร์ม</button>
+        </div>
+      </div>
     </aside>
   </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <img src="logo.png" alt="โลโก้" class="footer-logo-img">
+        <div>
+          <div class="footer-school">โรงเรียนนายางกลักพิทยาคม</div>
+          <div class="footer-group">กลุ่มงานบริหารงานงบประมาณ</div>
+        </div>
+      </div>
+      <div class="footer-dev">
+        <div class="footer-dev-label">ผู้พัฒนาระบบ</div>
+        <div class="footer-dev-name">นายอดิศักดิ์ วนาใส</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div id="loadingText">กำลังสร้างไฟล์...</div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

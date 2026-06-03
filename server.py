@@ -385,7 +385,7 @@ def add_first_page_review_sections(doc, data, total, remaining, font_size=16):
     cell_paragraph(left, "ผู้รับผิดชอบ", size=font_size, bold=True)
     add_signature_to_cell(left, data["requesterName"], data["requesterPosition"], "ลงชื่อ........................................................ผู้รับผิดชอบ", size=font_size)
     cell_paragraph(right, "ผู้เห็นชอบ", size=font_size, bold=True)
-    add_signature_to_cell(right, data["approverName"], f"ผู้ช่วยผู้อำนวยการกลุ่มบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ", size=font_size)
+    add_signature_to_cell(right, data["approverName"], f"หัวหน้ากลุ่มงานบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ", size=font_size)
 
     left, right = table.rows[1].cells
     cell_paragraph(left, "ได้ตรวจสอบแล้วมีในแผนจริง", size=font_size, bold=True)
@@ -502,7 +502,7 @@ def build_docx(data):
     add_items_table(doc, items, min_rows=max(10, len(items)))
     paragraph(doc, f"จำนวนเงินตัวอักษร  {baht_text(total)}", after=8)
     add_signature(doc, data["requesterName"], data["requesterPosition"], "ลงชื่อ........................................................ผู้รับผิดชอบ")
-    add_signature(doc, data["approverName"], f"ผู้ช่วยผู้อำนวยการกลุ่มบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ")
+    add_signature(doc, data["approverName"], f"หัวหน้ากลุ่มงานบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ")
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
     # ===== หน้า 3 =====

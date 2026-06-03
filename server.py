@@ -356,14 +356,14 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
     ], size=body_size)
 
     paragraph(doc, f"เรื่อง  {subject}", bold=True, size=body_size, after=0)
-    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=2, size=body_size)
+    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=0, size=body_size)
 
 
 def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
     table = doc.add_table(rows=3, cols=2)
     table.style = "Table Grid"
     set_table_width(table, 18.7)
-    set_table_cell_margins(table, top=85, start=120, bottom=85, end=120)
+    set_table_cell_margins(table, top=40, start=80, bottom=40, end=80)
     for row in table.rows:
         for index, cell in enumerate(row.cells):
             set_cell_width(cell, 9.35)
@@ -443,8 +443,8 @@ def build_docx(data):
     }
     remaining = money(data["totalBudget"]) - money(data["spentBudget"]) - total
     doc = setup_document()
-    compact_size = 16
-    compact_signature_size = 14
+    compact_size = 14
+    compact_signature_size = 12
 
     # ===== หน้า 1 =====
     add_memo_header(doc, "ขอซื้อพัสดุ/ขอจ้างทำของ/ขอจ้างเหมาบริการ", "ศธ04299.37/จัดซื้อจัดจ้าง", data, body_size=compact_size, title_size=22, garuda_position="left")
@@ -475,22 +475,10 @@ def build_docx(data):
         (" สำหรับใช้ในโรงเรียนนายางกลักพิทยาคม โดยมีรายละเอียดดังนี้", False),
     ], size=compact_size)
 
-    # P6: ว่างเปล่า (เหมือนไฟล์ตัวอย่าง)
-    p_empty = doc.add_paragraph()
-    p_empty.paragraph_format.first_line_indent = Cm(1.25)
-    p_empty.paragraph_format.space_after = Pt(0)
-    p_empty.paragraph_format.line_spacing = 1.0
-
     # Summary table (1 แถว แบบไฟล์ตัวอย่าง)
-    add_summary_table(doc, total, font_size=14)
+    add_summary_table(doc, total, font_size=12)
 
     paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size)
-
-    # ว่างเปล่าก่อน จึงเรียน
-    p_empty2 = doc.add_paragraph()
-    p_empty2.paragraph_format.first_line_indent = Cm(1.25)
-    p_empty2.paragraph_format.space_after = Pt(0)
-    p_empty2.paragraph_format.line_spacing = 1.0
 
     paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0)
     add_first_page_review_sections(doc, data, total, remaining, font_size=compact_signature_size)
@@ -556,6 +544,31 @@ def build_docx(data):
     return out.read()
 
 
+
+
+def build_pdf(data):
+    """Generate DOCX then convert to PDF using LibreOffice"""
+    import subprocess, tempfile
+    docx_bytes = build_docx(data)
+    # Write DOCX to temp file
+    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
+        f.write(docx_bytes)
+        tmp_docx = f.name
+    # Convert using LibreOffice
+    tmp_dir = Path(tmp_docx).parent
+    result = subprocess.run(
+        ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(tmp_dir), tmp_docx],
+        capture_output=True, timeout=60
+    )
+    tmp_pdf = tmp_docx.replace('.docx', '.pdf')
+    if Path(tmp_pdf).exists():
+        pdf_bytes = Path(tmp_pdf).read_bytes()
+        Path(tmp_docx).unlink(missing_ok=True)
+        Path(tmp_pdf).unlink(missing_ok=True)
+        return pdf_bytes, True
+    Path(tmp_docx).unlink(missing_ok=True)
+    return None, False
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -573,6 +586,8 @@ class Handler(BaseHTTPRequestHandler):
         self.serve_file(target)
 
     def do_POST(self):
+        if self.path == "/generate-pdf":
+            return self.handle_generate_pdf()
         if self.path != "/generate":
             self.send_error(404)
             return
@@ -584,6 +599,33 @@ class Handler(BaseHTTPRequestHandler):
         output_path = GENERATED_DIR / filename
         output_path.write_bytes(docx_bytes)
         body = json.dumps({"ok": True, "file": f"/generated/{filename}", "filename": filename}, ensure_ascii=False).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+    def handle_generate_pdf(self):
+        length = int(self.headers.get("Content-Length", 0))
+        payload = json.loads(self.rfile.read(length) or b"{}")
+        # First generate DOCX
+        docx_bytes = build_docx(payload)
+        safe_project = re.sub(r"[^0-9A-Za-zก-๙._ -]+", "", clean_text(payload.get("project"), "procurement")).strip()
+        base_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_project[:40] or 'procurement'}-{uuid.uuid4().hex[:6]}"
+        docx_filename = base_name + ".docx"
+        pdf_filename = base_name + ".pdf"
+        docx_path = GENERATED_DIR / docx_filename
+        docx_path.write_bytes(docx_bytes)
+        # Convert to PDF
+        pdf_bytes, ok = build_pdf(payload)
+        if ok:
+            pdf_path = GENERATED_DIR / pdf_filename
+            pdf_path.write_bytes(pdf_bytes)
+            body = json.dumps({"ok": True, "file": f"/generated/{pdf_filename}", "filename": pdf_filename, "docxFile": f"/generated/{docx_filename}"}, ensure_ascii=False).encode("utf-8")
+        else:
+            # Fallback: return docx info with error note
+            body = json.dumps({"ok": False, "file": f"/generated/{docx_filename}", "filename": docx_filename, "error": "PDF conversion failed"}, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -623,3 +665,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -335,24 +335,23 @@ def add_signature_to_cell(cell, name, title, label="ลงชื่อ..........
 
 
 def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, garuda_position=None):
-    """Header with Garuda + tabs + บันทึกข้อความ in ONE paragraph (matching example)"""
-    # P0: ตราครุฑ + 5 tabs + บันทึกข้อความ in one paragraph
-    p_title = doc.add_paragraph()
-    p_title.paragraph_format.space_before = Pt(0)
-    p_title.paragraph_format.space_after = Pt(0)
-    p_title.paragraph_format.line_spacing = 1.0
-
+    """Header with Garuda + บันทึกข้อความ"""
     if garuda_position == "left" and GARUDA_PATH.exists():
+        # หน้า 1: ตราครุฑซ้าย + tabs + บันทึกข้อความ (ในบรรทัดเดียว)
+        p_title = doc.add_paragraph()
+        p_title.paragraph_format.space_before = Pt(0)
+        p_title.paragraph_format.space_after = Pt(0)
+        p_title.paragraph_format.line_spacing = 1.0
         run_img = p_title.add_run()
         run_img.add_picture(str(GARUDA_PATH), width=Cm(2.02), height=Cm(2.25))
-
-    # 5 tabs to push title to center
-    run_tabs = p_title.add_run('\t\t\t\t\t')
-    apply_run_font(run_tabs, size=title_size)
-
-    run_title = p_title.add_run('บันทึกข้อความ')
-    run_title.bold = True
-    apply_run_font(run_title, size=title_size, bold=True)
+        run_tabs = p_title.add_run('\t\t\t\t\t')
+        apply_run_font(run_tabs, size=title_size)
+        run_title = p_title.add_run('บันทึกข้อความ')
+        run_title.bold = True
+        apply_run_font(run_title, size=title_size, bold=True)
+    else:
+        # หน้าอื่น: บันทึกข้อความ กึ่งกลาง
+        paragraph(doc, 'บันทึกข้อความ', bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=0)
 
     paragraph(doc, "ส่วนราชการ  โรงเรียนนายางกลักพิทยาคม  อำเภอเทพสถิต  จังหวัดชัยภูมิ", bold=True, size=body_size, after=0)
 
@@ -507,7 +506,7 @@ def build_docx(data):
 
     # ===== หน้า 3 =====
     add_page_break(doc)
-    add_memo_header(doc, "ขออนุมัติแต่งตั้งคณะกรรมการจัดทำราคากลางและคณะกรรมการตรวจรับพัสดุ", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22, garuda_position="left")
+    add_memo_header(doc, "ขออนุมัติแต่งตั้งคณะกรรมการจัดทำราคากลางและคณะกรรมการตรวจรับพัสดุ", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22)
     paragraph(doc, f"ด้วย งาน/โครงการ {data['project']} มีความประสงค์จะดำเนินการ {data['procurementType']} ประจำปีงบประมาณ {data['year']} วงเงินงบประมาณ {fmt_money(total)} บาท", first_line=1.25)
     paragraph(doc, "ดังนั้น เพื่อให้การจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ/กำหนดร่างขอบเขตของงาน เป็นไปตามพระราชบัญญัติการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560 มาตรา 4 จึงเห็นสมควรแต่งตั้ง", first_line=1.25)
     paragraph(doc, "1. คณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ", bold=True)
@@ -527,7 +526,7 @@ def build_docx(data):
 
     # ===== หน้า 4 =====
     add_page_break(doc)
-    add_memo_header(doc, f"ขอความเห็นชอบราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ โครงการ{data['project']}", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22, garuda_position="left")
+    add_memo_header(doc, f"ขอความเห็นชอบราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ โครงการ{data['project']}", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22)
     paragraph(doc, f"ตามบันทึกที่ ศธ04299.37/ราคากลางพัสดุ แต่งตั้งคณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ ในการ{data['procurementType']} เพื่อ{data['purpose']} นั้น โดยมีรายละเอียดดังนี้", first_line=1.25)
     paragraph(doc, f"จัดซื้อ/จ้าง ด้วยวิธีเฉพาะเจาะจง เนื่องจากมีวงเงินในการจัดซื้อจัดจ้างครั้งหนึ่งไม่เกินวงเงินตามที่กำหนด ราคากลางที่คำนวณได้ {fmt_money(total)} บาท วงเงินที่จะซื้อ/จ้าง {fmt_money(total)} บาท โดยพิจารณาคัดเลือกข้อเสนอโดยใช้เกณฑ์ราคา และผู้ขายจะต้องส่งมอบพัสดุภายในระยะเวลา {data['deliveryDays']} วัน", first_line=1.25)
     paragraph(doc, "บัดนี้ คณะกรรมการจัดทำราคากลาง ได้ดำเนินการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุเรียบร้อยแล้ว ดังรายละเอียดที่แนบมาพร้อมนี้", first_line=1.25)
@@ -677,4 +676,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

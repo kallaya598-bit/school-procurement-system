@@ -358,7 +358,7 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
             p_img.paragraph_format.space_after = Pt(0)
             p_img.paragraph_format.line_spacing = 1.0
             p_img.add_run().add_picture(str(GARUDA_PATH), width=Cm(2.02), height=Cm(2.25))
-        paragraph(doc, 'บันทึกข้อความ', bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=0)
+        paragraph(doc, 'บันทึกข้อความ', bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=0, line_spacing=1.5)
 
     paragraph(doc, "ส่วนราชการ  โรงเรียนนายางกลักพิทยาคม  อำเภอเทพสถิต  จังหวัดชัยภูมิ", bold=True, size=body_size, after=0)
 
@@ -371,7 +371,7 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
     ], size=body_size)
 
     paragraph(doc, f"เรื่อง  {subject}", bold=True, size=body_size, after=0)
-    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=0, size=body_size)
+    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=0, size=body_size, line_spacing=1.5)
 
 
 def add_first_page_review_sections(doc, data, total, remaining, font_size=16):
@@ -496,9 +496,9 @@ def build_docx(data):
     # Summary table (1 แถว แบบไฟล์ตัวอย่าง)
     add_summary_table(doc, total, font_size=12)
 
-    paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size)
+    paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size, line_spacing=1.5)
 
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0)
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0, line_spacing=1.5)
     add_first_page_review_sections(doc, data, total, remaining, font_size=compact_signature_size)
 
     # ===== หน้า 2 =====
@@ -526,7 +526,7 @@ def build_docx(data):
     paragraph(doc, f"2.2 {data['inspectCommittee2Name']} ตำแหน่ง {data['inspectCommittee2Position']} กรรมการ")
     paragraph(doc, f"2.3 {data['inspectCommittee3Name']} ตำแหน่ง {data['inspectCommittee3Position']} กรรมการ")
     paragraph(doc, "มีหน้าที่ตรวจรับพัสดุตามใบสั่งซื้อ/ใบสั่งจ้าง หรือเอกสารอื่นที่เกี่ยวข้อง", first_line=1.25)
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25)
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25, line_spacing=1.5)
     add_signature(doc, data["procurementOfficerName"], "เจ้าหน้าที่", "ลงชื่อ........................................................เจ้าหน้าที่")
     add_signature(doc, data["headOfficerName"], "หัวหน้าเจ้าหน้าที่", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่")
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
@@ -537,7 +537,7 @@ def build_docx(data):
     paragraph(doc, f"ตามบันทึกที่ ศธ04299.37/ราคากลางพัสดุ แต่งตั้งคณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ ในการ{data['procurementType']} เพื่อ{data['purpose']} นั้น โดยมีรายละเอียดดังนี้", first_line=1.25)
     paragraph(doc, f"จัดซื้อ/จ้าง ด้วยวิธีเฉพาะเจาะจง เนื่องจากมีวงเงินในการจัดซื้อจัดจ้างครั้งหนึ่งไม่เกินวงเงินตามที่กำหนด ราคากลางที่คำนวณได้ {fmt_money(total)} บาท วงเงินที่จะซื้อ/จ้าง {fmt_money(total)} บาท โดยพิจารณาคัดเลือกข้อเสนอโดยใช้เกณฑ์ราคา และผู้ขายจะต้องส่งมอบพัสดุภายในระยะเวลา {data['deliveryDays']} วัน", first_line=1.25)
     paragraph(doc, "บัดนี้ คณะกรรมการจัดทำราคากลาง ได้ดำเนินการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุเรียบร้อยแล้ว ดังรายละเอียดที่แนบมาพร้อมนี้", first_line=1.25)
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25)
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25, line_spacing=1.5)
     add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานกรรมการ")
     add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ")
     add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ")

@@ -569,13 +569,34 @@ def build_docx(data):
 
 
 
+def swap_font_for_pdf(docx_bytes, from_font="TH SarabunPSK", to_font="TH Sarabun"):
+    """Replace font name in DOCX for PDF conversion compatibility"""
+    import io, zipfile
+    src = io.BytesIO(docx_bytes)
+    dst = io.BytesIO()
+    with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename.endswith('.xml') or item.filename.endswith('.rels'):
+                try:
+                    text = data.decode('utf-8')
+                    text = text.replace(from_font, to_font)
+                    data = text.encode('utf-8')
+                except Exception:
+                    pass
+            zout.writestr(item, data)
+    return dst.getvalue()
+
+
 def build_pdf(data):
     """Generate DOCX then convert to PDF using LibreOffice"""
     import subprocess, tempfile
     docx_bytes = build_docx(data)
+    # Swap font for LibreOffice compatibility
+    pdf_docx_bytes = swap_font_for_pdf(docx_bytes)
     # Write DOCX to temp file
     with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
-        f.write(docx_bytes)
+        f.write(pdf_docx_bytes)
         tmp_docx = f.name
     # Convert using LibreOffice
     tmp_dir = Path(tmp_docx).parent

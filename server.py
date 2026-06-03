@@ -19,7 +19,7 @@ from docx.shared import Cm, Pt
 BASE_DIR = Path(__file__).resolve().parent
 GENERATED_DIR = BASE_DIR / "generated"
 GENERATED_DIR.mkdir(exist_ok=True)
-FONT_NAME = "TH Sarabun"
+FONT_NAME = "TH SarabunPSK"
 GARUDA_PATH = BASE_DIR / "images.jpg"
 
 THAI_MONTHS = ["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"]

@@ -134,6 +134,15 @@ def set_table_cell_margins(table, top=70, start=90, bottom=70, end=90):
         node.set(qn("w:type"), "dxa")
 
 
+
+
+def set_row_height(row, height_dxa):
+    """Set minimum row height in DXA units"""
+    tr_pr = row._tr.get_or_add_trPr()
+    tr_h = OxmlElement("w:trHeight")
+    tr_h.set(qn("w:val"), str(height_dxa))
+    tr_pr.append(tr_h)
+
 def apply_section_layout(section, compact=False):
     section.page_width = Cm(21.0)
     section.page_height = Cm(29.7)
@@ -359,12 +368,15 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
     paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=0, size=body_size)
 
 
-def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
+def add_first_page_review_sections(doc, data, total, remaining, font_size=16):
     table = doc.add_table(rows=3, cols=2)
     table.style = "Table Grid"
     set_table_width(table, 18.7)
-    set_table_cell_margins(table, top=40, start=80, bottom=40, end=80)
-    for row in table.rows:
+    set_table_cell_margins(table, top=60, start=100, bottom=60, end=100)
+    # Row heights from example: 1485, 2971, 3344 DXA
+    row_heights = [1485, 2971, 3344]
+    for ri, row in enumerate(table.rows):
+        set_row_height(row, row_heights[ri])
         for index, cell in enumerate(row.cells):
             set_cell_width(cell, 9.35)
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
@@ -388,7 +400,7 @@ def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
     add_signature_to_cell(right, data["headOfficerName"], "ครู", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่", size=font_size)
 
     left, right = table.rows[2].cells
-    add_signature_to_cell(left, data["budgetAssistantName"], "ผู้ช่วยผู้อำนวยการกลุ่มบริหารงบประมาณ", size=font_size)
+    add_signature_to_cell(left, data["budgetAssistantName"], "หัวหน้ากลุ่มงานบริหารงบประมาณ", size=font_size)
     add_signature_to_cell(left, data["deputyName"], "รองผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", size=font_size)
 
     cell_paragraph(right, "ความเห็นของผู้อำนวยการ", size=font_size, bold=True)
@@ -443,8 +455,8 @@ def build_docx(data):
     }
     remaining = money(data["totalBudget"]) - money(data["spentBudget"]) - total
     doc = setup_document()
-    compact_size = 14
-    compact_signature_size = 12
+    compact_size = 16
+    compact_signature_size = 16
 
     # ===== หน้า 1 =====
     add_memo_header(doc, "ขอซื้อพัสดุ/ขอจ้างทำของ/ขอจ้างเหมาบริการ", "ศธ04299.37/จัดซื้อจัดจ้าง", data, body_size=compact_size, title_size=22, garuda_position="left")

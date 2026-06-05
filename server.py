@@ -439,7 +439,7 @@ def build_docx(data):
         "project": clean_text(data.get("project")),
         "adminGroup": clean_text(data.get("adminGroup")),
         "planPage": clean_text(data.get("planPage")),
-        "totalBudget": fmt_money(data.get("totalBudget", total)),
+        "totalBudget": fmt_money(data.get("totalBudget", total)) if money(data.get("totalBudget", 0)) != 0 else "............................",
         "spentBudget": fmt_money(data.get("spentBudget", 0)),
         "purpose": clean_text(data.get("purpose")),
         "deliveryDays": clean_text(data.get("deliveryDays"), "7"),

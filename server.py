@@ -161,8 +161,30 @@ def apply_section_layout(section, compact=False):
 def apply_run_font(run, size=16, bold=False):
     run.bold = bold
     run.font.name = FONT_NAME
-    run._element.rPr.rFonts.set(qn("w:eastAsia"), FONT_NAME)
     run.font.size = Pt(size)
+    rpr = run._element.get_or_add_rPr()
+    # Set font for ALL script ranges incl. w:cs (Complex Script = Thai).
+    # Thai is a complex script; without w:cs, LibreOffice renders Thai with its
+    # default CTL font (Loma/Garuda) instead of TH SarabunPSK. Word is unaffected visually.
+    rfonts = rpr.get_or_add_rFonts()
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        rfonts.set(qn(attr), FONT_NAME)
+    # Complex-script font size (w:szCs) must match w:sz, in half-points
+    half_pts = str(int(round(size * 2)))
+    szcs = rpr.find(qn("w:szCs"))
+    if szcs is None:
+        szcs = OxmlElement("w:szCs")
+        rpr.append(szcs)
+    szcs.set(qn("w:val"), half_pts)
+    # Complex-script bold (w:bCs) must match w:b for Thai bold text
+    bcs = rpr.find(qn("w:bCs"))
+    if bold:
+        if bcs is None:
+            bcs = OxmlElement("w:bCs")
+            rpr.append(bcs)
+        bcs.set(qn("w:val"), "1")
+    elif bcs is not None:
+        rpr.remove(bcs)
 
 
 def format_paragraph_runs(p, size=16, bold=False):
@@ -215,8 +237,16 @@ def setup_document():
     apply_section_layout(doc.sections[0], compact=True)
     style = doc.styles["Normal"]
     style.font.name = FONT_NAME
-    style._element.rPr.rFonts.set(qn("w:eastAsia"), FONT_NAME)
     style.font.size = Pt(16)
+    st_rfonts = style._element.rPr.get_or_add_rFonts()
+    for attr in ("w:ascii", "w:hAnsi", "w:eastAsia", "w:cs"):
+        st_rfonts.set(qn(attr), FONT_NAME)
+    # default complex-script size = 16pt (32 half-points)
+    st_szcs = style._element.rPr.find(qn("w:szCs"))
+    if st_szcs is None:
+        st_szcs = OxmlElement("w:szCs")
+        style._element.rPr.append(st_szcs)
+    st_szcs.set(qn("w:val"), "32")
     return doc
 
 

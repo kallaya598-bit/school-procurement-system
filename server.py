@@ -589,27 +589,49 @@ def swap_font_for_pdf(docx_bytes, from_font="TH SarabunPSK", to_font="TH Sarabun
 
 
 def build_pdf(data):
-    """Generate DOCX then convert to PDF using LibreOffice"""
+    """Generate DOCX then convert to PDF.
+
+    The font 'TH SarabunPSK' is bundled in fonts/ and installed in the Docker container,
+    so we DO NOT swap the font — LibreOffice (server) and Microsoft Word (local) both render
+    the exact same Sarabun font as the downloaded Word file.
+    """
     import subprocess, tempfile
     docx_bytes = build_docx(data)
-    # Swap font for LibreOffice compatibility
-    pdf_docx_bytes = swap_font_for_pdf(docx_bytes)
-    # Write DOCX to temp file
     with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
-        f.write(pdf_docx_bytes)
+        f.write(docx_bytes)
         tmp_docx = f.name
-    # Convert using LibreOffice
-    tmp_dir = Path(tmp_docx).parent
-    result = subprocess.run(
-        ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(tmp_dir), tmp_docx],
-        capture_output=True, timeout=60
-    )
     tmp_pdf = tmp_docx.replace('.docx', '.pdf')
-    if Path(tmp_pdf).exists():
-        pdf_bytes = Path(tmp_pdf).read_bytes()
-        Path(tmp_docx).unlink(missing_ok=True)
-        Path(tmp_pdf).unlink(missing_ok=True)
-        return pdf_bytes, True
+
+    # 1) Local Windows: use Microsoft Word via docx2pdf (identical to Word "Save As PDF")
+    try:
+        from docx2pdf import convert
+        convert(tmp_docx, tmp_pdf)
+        if Path(tmp_pdf).exists():
+            pdf_bytes = Path(tmp_pdf).read_bytes()
+            Path(tmp_docx).unlink(missing_ok=True)
+            Path(tmp_pdf).unlink(missing_ok=True)
+            return pdf_bytes, True
+    except Exception:
+        pass
+
+    # 2) Server (Linux/Render): use LibreOffice headless with the installed TH SarabunPSK font
+    tmp_dir = Path(tmp_docx).parent
+    for exe in ['soffice', 'libreoffice',
+                r'C:\Program Files\LibreOffice\program\soffice.exe',
+                r'C:\Program Files (x86)\LibreOffice\program\soffice.exe']:
+        try:
+            result = subprocess.run(
+                [exe, '--headless', '--convert-to', 'pdf', '--outdir', str(tmp_dir), tmp_docx],
+                capture_output=True, timeout=120,
+            )
+            if result.returncode == 0 and Path(tmp_pdf).exists():
+                pdf_bytes = Path(tmp_pdf).read_bytes()
+                Path(tmp_docx).unlink(missing_ok=True)
+                Path(tmp_pdf).unlink(missing_ok=True)
+                return pdf_bytes, True
+        except Exception:
+            continue
+
     Path(tmp_docx).unlink(missing_ok=True)
     return None, False
 
@@ -688,12 +710,15 @@ class Handler(BaseHTTPRequestHandler):
             content_type = "application/javascript; charset=utf-8"
         elif target.suffix == ".docx":
             content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif target.suffix == ".pdf":
+            content_type = "application/pdf"
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         if attachment:
             encoded_name = quote(target.name)
-            self.send_header("Content-Disposition", f"attachment; filename=\"document.docx\"; filename*=UTF-8''{encoded_name}")
+            fallback_name = "document" + target.suffix
+            self.send_header("Content-Disposition", f"attachment; filename=\"{fallback_name}\"; filename*=UTF-8''{encoded_name}")
         self.end_headers()
         self.wfile.write(data)
 

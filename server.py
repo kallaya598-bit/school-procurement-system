@@ -259,9 +259,9 @@ def add_page_break(doc, compact=False):
 def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15, compact=False):
     headers = ["ที่", "รายการและรายละเอียดคุณลักษณะเฉพาะพัสดุ" if include_details else "รายการ", "จำนวนหน่วย", "ราคา/หน่วย", "จำนวนเงิน", "หมายเหตุ"]
     if compact:
-        widths = [0.8, 8.4 if include_details else 8.7, 1.4, 1.6, 1.8, 1.4]
+        widths = [0.8, 7.6 if include_details else 7.9, 1.5, 1.9, 2.0, 1.6]
     else:
-        widths = [0.8, 8.4 if include_details else 8.7, 1.4, 1.6, 1.8, 1.4]
+        widths = [0.8, 7.6 if include_details else 7.9, 1.5, 1.9, 2.0, 1.6]
     rows = max(min_rows, len(items))
     table = doc.add_table(rows=rows + 2, cols=len(headers))
     table.style = "Table Grid"

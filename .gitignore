@@ -1,3 +1,16 @@
+# ไฟล์ที่ระบบสร้าง (เอกสาร Word/PDF) — ไม่ต้องเก็บใน git
+generated/
+
+# Python cache
 __pycache__/
 *.pyc
-generated/
+*.pyo
+
+# ไฟล์ชั่วคราว
+*.tmp
+_test_*.py
+_check_*.py
+
+# ระบบปฏิบัติการ
+Thumbs.db
+.DS_Store

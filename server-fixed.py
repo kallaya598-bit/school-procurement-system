@@ -2,8 +2,6 @@ import io
 import json
 import os
 import re
-import subprocess
-import sys
 import uuid
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -13,11 +11,10 @@ from urllib.parse import quote, unquote, urlparse
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
-
 
 BASE_DIR = Path(__file__).resolve().parent
 GENERATED_DIR = BASE_DIR / "generated"
@@ -25,21 +22,7 @@ GENERATED_DIR.mkdir(exist_ok=True)
 FONT_NAME = "TH SarabunPSK"
 GARUDA_PATH = BASE_DIR / "images.jpg"
 
-THAI_MONTHS = [
-    "",
-    "มกราคม",
-    "กุมภาพันธ์",
-    "มีนาคม",
-    "เมษายน",
-    "พฤษภาคม",
-    "มิถุนายน",
-    "กรกฎาคม",
-    "สิงหาคม",
-    "กันยายน",
-    "ตุลาคม",
-    "พฤศจิกายน",
-    "ธันวาคม",
-]
+THAI_MONTHS = ["","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"]
 
 
 def clean_text(value, default=""):
@@ -61,11 +44,10 @@ def fmt_money(value):
 
 def thai_number_text(number):
     number = int(number)
-    digits = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"]
-    units = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"]
+    digits = ["ศูนย์","หนึ่ง","สอง","สาม","สี่","ห้า","หก","เจ็ด","แปด","เก้า"]
+    units = ["","สิบ","ร้อย","พัน","หมื่น","แสน","ล้าน"]
     if number == 0:
         return digits[0]
-
     def read_group(n):
         text = ""
         s = str(n)
@@ -84,7 +66,6 @@ def thai_number_text(number):
             else:
                 text += digits[d] + units[pos]
         return text
-
     parts = []
     while number:
         parts.append(number % 1_000_000)
@@ -153,6 +134,15 @@ def set_table_cell_margins(table, top=70, start=90, bottom=70, end=90):
         node.set(qn("w:type"), "dxa")
 
 
+
+
+def set_row_height(row, height_dxa):
+    """Set minimum row height in DXA units"""
+    tr_pr = row._tr.get_or_add_trPr()
+    tr_h = OxmlElement("w:trHeight")
+    tr_h.set(qn("w:val"), str(height_dxa))
+    tr_pr.append(tr_h)
+
 def apply_section_layout(section, compact=False):
     section.page_width = Cm(21.0)
     section.page_height = Cm(29.7)
@@ -199,7 +189,12 @@ def paragraph(doc, text="", bold=False, align=None, size=16, before=0, after=0, 
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(before)
     p.paragraph_format.space_after = Pt(after)
-    p.paragraph_format.line_spacing = line_spacing
+    if line_spacing == 1.5:
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
+    elif line_spacing == 2.0:
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+    else:
+        p.paragraph_format.line_spacing = line_spacing
     if first_line is not None:
         p.paragraph_format.first_line_indent = Cm(first_line)
     if align is not None:
@@ -231,14 +226,16 @@ def add_page_break(doc, compact=False):
     return section
 
 
-def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15, compact=False):
+def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15, compact=False,
+                    start_no=1, show_total=True, total_override=None):
     headers = ["ที่", "รายการและรายละเอียดคุณลักษณะเฉพาะพัสดุ" if include_details else "รายการ", "จำนวนหน่วย", "ราคา/หน่วย", "จำนวนเงิน", "หมายเหตุ"]
     if compact:
-        widths = [1.0, 7.6 if include_details else 7.6, 2.0, 2.35, 3.0, 2.75]
+        widths = [0.9, 7.3 if include_details else 6.8, 1.6 if include_details else 1.8, 1.9 if include_details else 2.1, 2.4 if include_details else 2.5, 1.9]
     else:
         widths = [0.9, 7.3 if include_details else 6.8, 1.6 if include_details else 1.8, 1.9 if include_details else 2.1, 2.4 if include_details else 2.5, 1.9]
     rows = max(min_rows, len(items))
-    table = doc.add_table(rows=rows + 2, cols=len(headers))
+    extra_rows = 2 if show_total else 1  # header + (total row?)
+    table = doc.add_table(rows=rows + extra_rows, cols=len(headers))
     table.style = "Table Grid"
     set_table_width(table, sum(widths))
     set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
@@ -253,7 +250,6 @@ def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15,
                 run.bold = True
                 apply_run_font(run, size=font_size, bold=True)
         cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
     total = 0
     for idx in range(rows):
         item = items[idx] if idx < len(items) else {}
@@ -261,14 +257,7 @@ def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15,
         price = money(item.get("unitPrice", 0))
         amount = qty * price if item else 0
         total += amount
-        values = [
-            str(idx + 1),
-            clean_text(item.get("name", "")),
-            clean_text(item.get("quantity", "")),
-            fmt_money(price) if item else "",
-            fmt_money(amount) if item else "",
-            clean_text(item.get("note", "")),
-        ]
+        values = [str(start_no + idx), clean_text(item.get("name", "")), clean_text(item.get("quantity", "")), fmt_money(price) if item else "", fmt_money(amount) if item else "", clean_text(item.get("note", ""))]
         for col, value in enumerate(values):
             cell = table.cell(idx + 1, col)
             set_cell_width(cell, widths[col])
@@ -278,25 +267,115 @@ def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15,
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT if col in (1, 5) else WD_ALIGN_PARAGRAPH.CENTER
                 for run in p.runs:
                     apply_run_font(run, size=font_size)
-
-    total_row = table.rows[-1]
-    total_row.cells[0].merge(total_row.cells[3])
-    total_row.cells[0].text = "รวม"
-    total_row.cells[4].text = fmt_money(total)
-    total_row.cells[5].text = ""
-    for i, cell in enumerate(total_row.cells):
-        set_cell_shading(cell, "F2F2F2")
-        for p in cell.paragraphs:
-            p.alignment = WD_ALIGN_PARAGRAPH.RIGHT if i < 4 else WD_ALIGN_PARAGRAPH.CENTER
-            for run in p.runs:
-                apply_run_font(run, size=font_size, bold=True)
+    if show_total:
+        total_row = table.rows[-1]
+        total_row.cells[0].merge(total_row.cells[3])
+        total_row.cells[0].text = "รวม"
+        total_row.cells[4].text = fmt_money(total if total_override is None else total_override)
+        total_row.cells[5].text = ""
+        for i, cell in enumerate(total_row.cells):
+            set_cell_shading(cell, "F2F2F2")
+            for p in cell.paragraphs:
+                p.alignment = WD_ALIGN_PARAGRAPH.RIGHT if i < 4 else WD_ALIGN_PARAGRAPH.CENTER
+                for run in p.runs:
+                    apply_run_font(run, size=font_size, bold=True)
     return total
 
 
-def add_signature(doc, name, title, label="ลงชื่อ........................................................", size=16, after=4):
-    paragraph(doc, label, align=WD_ALIGN_PARAGRAPH.CENTER, after=0, size=size)
-    paragraph(doc, f"( {name} )" if name else "(........................................................)", align=WD_ALIGN_PARAGRAPH.CENTER, after=0, size=size)
-    paragraph(doc, f"ตำแหน่ง {title}" if title else "ตำแหน่ง........................................................", align=WD_ALIGN_PARAGRAPH.CENTER, after=after, size=size)
+def add_summary_table(doc, total_amount, font_size=14):
+    """Summary table matching the example: ที่, รายการ, จำนวนหน่วย, ราคา/หน่วย, จำนวนเงิน, หมายเหตุ"""
+    # Widths from example file (DXA->cm): 556, 4192, 1108, 1300, 1723, 1723
+    widths = [0.981, 7.393, 1.954, 2.293, 3.039, 3.039]
+    headers = ["ที่", "รายการ", "จำนวนหน่วย", "ราคา/หน่วย", "จำนวนเงิน", "หมายเหตุ"]
+
+    table = doc.add_table(rows=3, cols=6)
+    table.style = "Table Grid"
+    set_table_width(table, sum(widths))
+    set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
+
+    # Header row
+    for i, header in enumerate(headers):
+        cell = table.cell(0, i)
+        set_cell_shading(cell, "D9EAF7")
+        set_cell_width(cell, widths[i])
+        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        cell_paragraph(cell, header, size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+    # Data row
+    data_values = ["1", "ดังเอกสารที่แนบมา", "1", fmt_money(total_amount), fmt_money(total_amount), ""]
+    for col, value in enumerate(data_values):
+        cell = table.cell(1, col)
+        set_cell_width(cell, widths[col])
+        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+        cell_paragraph(cell, value, size=font_size, align=WD_ALIGN_PARAGRAPH.LEFT if col == 1 else WD_ALIGN_PARAGRAPH.CENTER)
+
+    # Total row - merge first 4 cells
+    total_row = table.rows[2]
+    total_row.cells[0].merge(total_row.cells[3])
+    total_row.cells[0].text = ""
+    for p in total_row.cells[0].paragraphs:
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        apply_run_font(p.add_run("รวม"), size=font_size, bold=True)
+    set_cell_shading(total_row.cells[0], "F2F2F2")
+    set_cell_width(total_row.cells[0], sum(widths[:4]))
+
+    cell_4 = total_row.cells[4]
+    set_cell_shading(cell_4, "F2F2F2")
+    set_cell_width(cell_4, widths[4])
+    cell_paragraph(cell_4, fmt_money(total_amount), size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+    cell_5 = total_row.cells[5]
+    set_cell_shading(cell_5, "F2F2F2")
+    set_cell_width(cell_5, widths[5])
+    cell_paragraph(cell_5, "", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
+
+
+def add_signature(doc, name, title, label="ลงชื่อ........................................................", size=16, after=4, bind_next=False):
+    p1 = paragraph(doc, label, align=WD_ALIGN_PARAGRAPH.CENTER, after=0, size=size)
+    p2 = paragraph(doc, f"( {name} )" if name else "(........................................................)", align=WD_ALIGN_PARAGRAPH.CENTER, after=0, size=size)
+    p3 = paragraph(doc, f"ตำแหน่ง {title}" if title else "ตำแหน่ง........................................................", align=WD_ALIGN_PARAGRAPH.CENTER, after=after, size=size)
+    # มัด 3 บรรทัดของลายเซ็นเดียวไว้ด้วยกัน ไม่ให้ตัดแยกคนละหน้า
+    for p in (p1, p2, p3):
+        p.paragraph_format.keep_together = True
+    p1.paragraph_format.keep_with_next = True
+    p2.paragraph_format.keep_with_next = True
+    # bind_next=True เพื่อร้อยลายเซ็นนี้ให้อยู่หน้าเดียวกับลายเซ็น/หัวข้อถัดไป
+    p3.paragraph_format.keep_with_next = bind_next
+    return p3
+
+
+def add_paginated_items(doc, items, sign_block, include_details=False, font_size=15,
+                        per_page=15, money_text=None, heading=None):
+    """แสดงตารางรายการพร้อมบล็อกลายเซ็นต่อท้าย
+    - ถ้ารายการ <= per_page : ตาราง + ลายเซ็น อยู่หน้าเดียวกัน
+    - ถ้ารายการ > per_page  : แบ่งเป็นหน้าๆ หน้าละ per_page รายการ และใส่ลายเซ็นทุกหน้า
+      (ยอดรวมแสดงเฉพาะหน้าสุดท้าย) เพื่อให้กรรมการเห็นและเซ็นได้ทุกหน้า
+    sign_block(doc) = ฟังก์ชันวาดบล็อกลายเซ็นของเอกสารหน้านั้น
+    """
+    grand_total = sum(money(i.get("quantity", 0)) * money(i.get("unitPrice", 0)) for i in items)
+    if len(items) <= per_page:
+        chunks = [items]
+    else:
+        chunks = [items[i:i + per_page] for i in range(0, len(items), per_page)]
+    last = len(chunks) - 1
+    start_no = 1
+    for ci, chunk in enumerate(chunks):
+        is_last = (ci == last)
+        # หน้าเดียว: เติมแถวว่างให้สวยเหมือนเดิม / หลายหน้า: ใช้จำนวนแถวตามจริง
+        min_rows = max(10, len(chunk)) if len(chunks) == 1 else len(chunk)
+        add_items_table(doc, chunk, include_details=include_details, min_rows=min_rows,
+                        font_size=font_size, start_no=start_no, show_total=is_last,
+                        total_override=grand_total)
+        start_no += len(chunk)
+        if is_last and money_text:
+            mp = paragraph(doc, money_text, after=8)
+            mp.paragraph_format.keep_with_next = True
+        if heading:
+            hp = paragraph(doc, heading, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
+            hp.paragraph_format.keep_with_next = True
+        sign_block(doc)
+        if not is_last:
+            add_page_break(doc)
 
 
 def add_signature_to_cell(cell, name, title, label="ลงชื่อ........................................................", size=12.5):
@@ -306,15 +385,33 @@ def add_signature_to_cell(cell, name, title, label="ลงชื่อ..........
 
 
 def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, garuda_position=None):
-    if garuda_position and GARUDA_PATH.exists():
-        p_img = doc.add_paragraph()
-        p_img.alignment = WD_ALIGN_PARAGRAPH.LEFT if garuda_position == "left" else WD_ALIGN_PARAGRAPH.CENTER
-        p_img.paragraph_format.space_before = Pt(0)
-        p_img.paragraph_format.space_after = Pt(0)
-        p_img.paragraph_format.line_spacing = 1.0
-        p_img.add_run().add_picture(str(GARUDA_PATH), height=Cm(2.25))
-    paragraph(doc, "บันทึกข้อความ", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=2)
-    paragraph(doc, "ส่วนราชการ  โรงเรียนนายางกลักพิทยาคม  อำเภอเทพสถิต  จังหวัดชัยภูมิ", bold=True, size=body_size)
+    """Header with Garuda + บันทึกข้อความ"""
+    if garuda_position == "left" and GARUDA_PATH.exists():
+        # หน้า 1: ตราครุฑซ้าย + tabs + บันทึกข้อความ (ในบรรทัดเดียว)
+        p_title = doc.add_paragraph()
+        p_title.paragraph_format.space_before = Pt(0)
+        p_title.paragraph_format.space_after = Pt(0)
+        p_title.paragraph_format.line_spacing = 1.0
+        run_img = p_title.add_run()
+        run_img.add_picture(str(GARUDA_PATH), width=Cm(2.02), height=Cm(2.25))
+        run_tabs = p_title.add_run('\t\t\t\t\t')
+        apply_run_font(run_tabs, size=title_size)
+        run_title = p_title.add_run('บันทึกข้อความ')
+        run_title.bold = True
+        apply_run_font(run_title, size=title_size, bold=True)
+    else:
+        # หน้าอื่น: ตราครุฑซ้าย (แยก paragraph) + บันทึกข้อความ กึ่งกลาง
+        if GARUDA_PATH.exists():
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p_img.paragraph_format.space_before = Pt(0)
+            p_img.paragraph_format.space_after = Pt(0)
+            p_img.paragraph_format.line_spacing = 1.0
+            p_img.add_run().add_picture(str(GARUDA_PATH), width=Cm(2.02), height=Cm(2.25))
+        paragraph(doc, 'บันทึกข้อความ', bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=title_size, after=0, line_spacing=1.5)
+
+    paragraph(doc, "ส่วนราชการ  โรงเรียนนายางกลักพิทยาคม  อำเภอเทพสถิต  จังหวัดชัยภูมิ", bold=True, size=body_size, after=0)
+
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.line_spacing = 1.0
@@ -322,52 +419,20 @@ def add_memo_header(doc, subject, doc_code, data, body_size=16, title_size=22, g
         (f"ที่ {doc_code}                            ", True),
         (f"วันที่ {data['day']} เดือน {data['month']} พ.ศ. {data['year']}", False),
     ], size=body_size)
-    paragraph(doc, f"เรื่อง  {subject}", bold=True, size=body_size)
-    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=2, size=body_size)
+
+    paragraph(doc, f"เรื่อง  {subject}", bold=True, size=body_size, after=0)
+    paragraph(doc, "เรียน  ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", bold=True, after=0, size=body_size, line_spacing=1.5)
 
 
-def add_summary_table(doc, project_name, total_amount, font_size=14):
-    """Add a summary table showing project summary with 'ดังเอกสารที่แนบมา' header"""
-    paragraph(doc, "ดังเอกสารที่แนบมา", bold=True, size=font_size, after=2)
-    
+def add_first_page_review_sections(doc, data, total, remaining, font_size=16):
     table = doc.add_table(rows=3, cols=2)
     table.style = "Table Grid"
     set_table_width(table, 18.7)
-    set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
-    
-    # Set column widths
-    for row in table.rows:
-        for idx, cell in enumerate(row.cells):
-            set_cell_width(cell, 9.35)
-            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-    
-    # Row 1: Headers
-    header_left = table.cell(0, 0)
-    header_right = table.cell(0, 1)
-    cell_paragraph(header_left, "รายการ", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    cell_paragraph(header_right, "ข้อมูล", size=font_size, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    set_cell_shading(header_left, "D9EAF7")
-    set_cell_shading(header_right, "D9EAF7")
-    
-    # Row 2: Project count
-    cell_paragraph(table.cell(1, 0), "จำนวนโครงการ", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
-    cell_paragraph(table.cell(1, 1), "1", size=font_size, align=WD_ALIGN_PARAGRAPH.CENTER)
-    
-    # Row 3: Project details and amount
-    details_text = f"โครงการ: {project_name}\nจำนวนเงินทั้งสิ้น: {fmt_money(total_amount)} บาท"
-    details_cell = table.cell(2, 0)
-    details_cell.merge(table.cell(2, 1))
-    cell_paragraph(details_cell, details_text, size=font_size, align=WD_ALIGN_PARAGRAPH.LEFT)
-    
-    paragraph(doc, "", after=2)
-
-
-def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
-    table = doc.add_table(rows=3, cols=2)
-    table.style = "Table Grid"
-    set_table_width(table, 18.7)
-    set_table_cell_margins(table, top=85, start=120, bottom=85, end=120)
-    for row in table.rows:
+    set_table_cell_margins(table, top=60, start=100, bottom=60, end=100)
+    # Row heights from example: 1485, 2971, 3344 DXA
+    row_heights = [1485, 2971, 3344]
+    for ri, row in enumerate(table.rows):
+        set_row_height(row, row_heights[ri])
         for index, cell in enumerate(row.cells):
             set_cell_width(cell, 9.35)
             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
@@ -376,7 +441,7 @@ def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
     cell_paragraph(left, "ผู้รับผิดชอบ", size=font_size, bold=True)
     add_signature_to_cell(left, data["requesterName"], data["requesterPosition"], "ลงชื่อ........................................................ผู้รับผิดชอบ", size=font_size)
     cell_paragraph(right, "ผู้เห็นชอบ", size=font_size, bold=True)
-    add_signature_to_cell(right, data["approverName"], f"ผู้ช่วยผู้อำนวยการกลุ่มบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ", size=font_size)
+    add_signature_to_cell(right, data["approverName"], f"หัวหน้ากลุ่มงานบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ", size=font_size)
 
     left, right = table.rows[1].cells
     cell_paragraph(left, "ได้ตรวจสอบแล้วมีในแผนจริง", size=font_size, bold=True)
@@ -391,7 +456,7 @@ def add_first_page_review_sections(doc, data, total, remaining, font_size=12.4):
     add_signature_to_cell(right, data["headOfficerName"], "ครู", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่", size=font_size)
 
     left, right = table.rows[2].cells
-    add_signature_to_cell(left, data["budgetAssistantName"], "ผู้ช่วยผู้อำนวยการกลุ่มบริหารงบประมาณ", size=font_size)
+    add_signature_to_cell(left, data["budgetAssistantName"], "หัวหน้ากลุ่มงานบริหารงบประมาณ", size=font_size)
     add_signature_to_cell(left, data["deputyName"], "รองผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", size=font_size)
 
     cell_paragraph(right, "ความเห็นของผู้อำนวยการ", size=font_size, bold=True)
@@ -419,7 +484,7 @@ def build_docx(data):
         "project": clean_text(data.get("project")),
         "adminGroup": clean_text(data.get("adminGroup")),
         "planPage": clean_text(data.get("planPage")),
-        "totalBudget": fmt_money(data.get("totalBudget", total)),
+        "totalBudget": fmt_money(data.get("totalBudget", total)) if money(data.get("totalBudget", 0)) != 0 else "............................",
         "spentBudget": fmt_money(data.get("spentBudget", 0)),
         "purpose": clean_text(data.get("purpose")),
         "deliveryDays": clean_text(data.get("deliveryDays"), "7"),
@@ -446,17 +511,16 @@ def build_docx(data):
     }
     remaining = money(data["totalBudget"]) - money(data["spentBudget"]) - total
     doc = setup_document()
-
     compact_size = 16
-    compact_signature_size = 14
+    compact_signature_size = 16
+
+    # ===== หน้า 1 =====
     add_memo_header(doc, "ขอซื้อพัสดุ/ขอจ้างทำของ/ขอจ้างเหมาบริการ", "ศธ04299.37/จัดซื้อจัดจ้าง", data, body_size=compact_size, title_size=22, garuda_position="left")
-    
-    # Add summary table after memo header
-    add_summary_table(doc, data["project"], total, font_size=14)
-    
+
+    # P5: ด้วยข้าพเจ้า...สำหรับใช้ในโรงเรียน... (ทั้งหมดในพารากราฟเดียว เหมือนไฟล์ตัวอย่าง)
     p = doc.add_paragraph()
     p.paragraph_format.first_line_indent = Cm(1.25)
-    p.paragraph_format.space_after = Pt(1)
+    p.paragraph_format.space_after = Pt(0)
     p.paragraph_format.line_spacing = 1.0
     p.alignment = WD_ALIGN_PARAGRAPH.THAI_JUSTIFY
     add_runs(p, [
@@ -476,24 +540,32 @@ def build_docx(data):
         (fmt_money(total), True),
         (" บาท ขอเสนอรายการประมาณการ เพื่อ ", False),
         (data["purpose"], True),
+        (" สำหรับใช้ในโรงเรียนนายางกลักพิทยาคม โดยมีรายละเอียดดังนี้", False),
     ], size=compact_size)
-    paragraph(doc, "สำหรับใช้ในโรงเรียนนายางกลักพิทยาคม โดยมีรายละเอียดดังนี้", first_line=1.25, size=compact_size, after=1)
-    add_items_table(doc, items, min_rows=3, font_size=14, compact=True)
-    paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size)
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0)
+
+    # Summary table (1 แถว แบบไฟล์ตัวอย่าง)
+    add_summary_table(doc, total, font_size=12)
+
+    paragraph(doc, f"จำนวนเงินตัวอักษร  ( {baht_text(total)} )", after=0, size=compact_size, line_spacing=1.5)
+
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดทราบและพิจารณา", first_line=1.25, size=compact_size, after=0, line_spacing=1.5)
     add_first_page_review_sections(doc, data, total, remaining, font_size=compact_signature_size)
 
+    # ===== หน้า 2 =====
     add_page_break(doc)
     paragraph(doc, "เอกสารแนบท้ายบันทึกข้อความ", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=20)
     paragraph(doc, "ขอซื้อพัสดุ/ขอจ้างทำของ/ขอจ้างเหมาบริการ", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    add_items_table(doc, items, min_rows=max(10, len(items)))
-    paragraph(doc, f"จำนวนเงินตัวอักษร  {baht_text(total)}", after=8)
-    add_signature(doc, data["requesterName"], data["requesterPosition"], "ลงชื่อ........................................................ผู้รับผิดชอบ")
-    add_signature(doc, data["approverName"], f"ผู้ช่วยผู้อำนวยการกลุ่มบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ")
-    add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
+    def sign_block_page2(d):
+        add_signature(d, data["requesterName"], data["requesterPosition"], "ลงชื่อ........................................................ผู้รับผิดชอบ", bind_next=True)
+        add_signature(d, data["approverName"], f"หัวหน้ากลุ่มงานบริหาร{data['adminGroup']}", "ลงชื่อ........................................................ผู้เห็นชอบ", bind_next=True)
+        add_signature(d, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
+
+    add_paginated_items(doc, items, sign_block_page2, money_text=f"จำนวนเงินตัวอักษร  {baht_text(total)}")
+
+    # ===== หน้า 3 =====
     add_page_break(doc)
-    add_memo_header(doc, "ขออนุมัติแต่งตั้งคณะกรรมการจัดทำราคากลางและคณะกรรมการตรวจรับพัสดุ", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22, garuda_position="left")
+    add_memo_header(doc, "ขออนุมัติแต่งตั้งคณะกรรมการจัดทำราคากลางและคณะกรรมการตรวจรับพัสดุ", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22)
     paragraph(doc, f"ด้วย งาน/โครงการ {data['project']} มีความประสงค์จะดำเนินการ {data['procurementType']} ประจำปีงบประมาณ {data['year']} วงเงินงบประมาณ {fmt_money(total)} บาท", first_line=1.25)
     paragraph(doc, "ดังนั้น เพื่อให้การจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ/กำหนดร่างขอบเขตของงาน เป็นไปตามพระราชบัญญัติการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560 มาตรา 4 จึงเห็นสมควรแต่งตั้ง", first_line=1.25)
     paragraph(doc, "1. คณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ", bold=True)
@@ -502,37 +574,44 @@ def build_docx(data):
     paragraph(doc, f"1.3 {data['priceCommittee3Name']} ตำแหน่ง {data['priceCommittee3Position']} กรรมการ")
     paragraph(doc, "มีหน้าที่จัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ/กำหนดร่างขอบเขตของงาน ที่จะ ซื้อ/จ้าง", first_line=1.25)
     paragraph(doc, "2. คณะกรรมการตรวจรับพัสดุ", bold=True)
-    paragraph(doc, f"2.1 {data['inspectCommittee1Name']} ตำแหน่ง {data['inspectCommittee1Position']} ประธานกรรมการ/ผู้ตรวจรับพัสดุ")
-    paragraph(doc, f"2.2 {data['inspectCommittee2Name']} ตำแหน่ง {data['inspectCommittee2Position']} กรรมการ")
-    paragraph(doc, f"2.3 {data['inspectCommittee3Name']} ตำแหน่ง {data['inspectCommittee3Position']} กรรมการ")
+    paragraph(doc, f"2.1 {data['inspectCommittee1Name']} ตำแหน่ง {data['inspectCommittee1Position']} ประธานกรรมการ/ผู้ตรวจรับพัสดุ  ลงชื่อ.................................")
+    paragraph(doc, f"2.2 {data['inspectCommittee2Name']} ตำแหน่ง {data['inspectCommittee2Position']} กรรมการ  ลงชื่อ.................................")
+    paragraph(doc, f"2.3 {data['inspectCommittee3Name']} ตำแหน่ง {data['inspectCommittee3Position']} กรรมการ  ลงชื่อ.................................")
     paragraph(doc, "มีหน้าที่ตรวจรับพัสดุตามใบสั่งซื้อ/ใบสั่งจ้าง หรือเอกสารอื่นที่เกี่ยวข้อง", first_line=1.25)
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25)
-    add_signature(doc, data["procurementOfficerName"], "เจ้าหน้าที่", "ลงชื่อ........................................................เจ้าหน้าที่")
-    add_signature(doc, data["headOfficerName"], "หัวหน้าเจ้าหน้าที่", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่")
+    closing_p3 = paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25, line_spacing=1.5)
+    closing_p3.paragraph_format.keep_with_next = True
+    add_signature(doc, data["procurementOfficerName"], "เจ้าหน้าที่", "ลงชื่อ........................................................เจ้าหน้าที่", bind_next=True)
+    add_signature(doc, data["headOfficerName"], "หัวหน้าเจ้าหน้าที่", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่", bind_next=True)
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
+    # ===== หน้า 4 =====
     add_page_break(doc)
-    add_memo_header(doc, f"ขอความเห็นชอบราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ โครงการ{data['project']}", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22, garuda_position="left")
+    add_memo_header(doc, f"ขอความเห็นชอบราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ โครงการ{data['project']}", "ศธ04299.37/ราคากลางพัสดุ", data, title_size=22)
     paragraph(doc, f"ตามบันทึกที่ ศธ04299.37/ราคากลางพัสดุ แต่งตั้งคณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ ในการ{data['procurementType']} เพื่อ{data['purpose']} นั้น โดยมีรายละเอียดดังนี้", first_line=1.25)
-    paragraph(doc, f"จัดซื้อ/จ้าง ด้วยวิธีเฉพาะเจาะจง เนื่องจากมีวงเงินในการจัดซื้อจัดจ้างครั้งหนึ่งไม่เกินวงเงินตามที่กำหนด ราคากลางที่คำนวณได้ {fmt_money(total)} บาท วงเงินที่จะซื้อ/จ้าง {fmt_money(total)} บาท โดยพิจารณาคัดเลือกข้อเสนอโดยใช้เกณฑ์ราคา และผู้ขายจะต้องส่งมอบพัสดุภายในระยะเวลา {data['deliveryDays']} วัน นับถัดจากวันที่ ตกลงซื้อ/จ้าง หรือ วันที่ลงนามรับใบสั่งซื้อ/จ้าง หรือ วันที่ทำสัญญาซื้อ/จ้าง ในการจัดซื้อ/จ้างในครั้งนี้ และ ขออนุมัติใช้พัสดุที่ผลิตหรือนำเข้าจากต่างประเทศ ถ้ามีการจัดซื้อพัสดุที่ผลิตหรือนำเข้าจากต่างประเทศ ที่มีราคาต่อหน่วยไม่เกิน 2 ล้านบาท", first_line=1.25)
+    paragraph(doc, f"จัดซื้อ/จ้าง ด้วยวิธีเฉพาะเจาะจง เนื่องจากมีวงเงินในการจัดซื้อจัดจ้างครั้งหนึ่งไม่เกินวงเงินตามที่กำหนด ราคากลางที่คำนวณได้ {fmt_money(total)} บาท วงเงินที่จะซื้อ/จ้าง {fmt_money(total)} บาท โดยพิจารณาคัดเลือกข้อเสนอโดยใช้เกณฑ์ราคา และผู้ขายจะต้องส่งมอบพัสดุภายในระยะเวลา {data['deliveryDays']} วัน", first_line=1.25)
     paragraph(doc, "บัดนี้ คณะกรรมการจัดทำราคากลาง ได้ดำเนินการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุเรียบร้อยแล้ว ดังรายละเอียดที่แนบมาพร้อมนี้", first_line=1.25)
-    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25)
-    add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานกรรมการ")
-    add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ")
-    add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ")
+    closing_p4 = paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25, line_spacing=1.5)
+    closing_p4.paragraph_format.keep_with_next = True
+    add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานกรรมการ", bind_next=True)
+    add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
+    add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
+    # ===== หน้า 5 =====
     add_page_break(doc)
     paragraph(doc, "ราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, size=20)
     paragraph(doc, f"งาน/โครงการ {data['project']} ของกลุ่มบริหาร {data['adminGroup']}")
     paragraph(doc, f"งบประมาณ {fmt_money(total)} บาท")
-    add_items_table(doc, items, include_details=True, min_rows=max(10, len(items)))
-    paragraph(doc, f"จำนวนเงินตัวอักษร  {baht_text(total)}")
-    paragraph(doc, "คณะกรรมการกำหนดราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ", bold=True, align=WD_ALIGN_PARAGRAPH.CENTER)
-    add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานคณะกรรมการ")
-    add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ")
-    add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ")
-    add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
+
+    def sign_block_page5(d):
+        add_signature(d, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานคณะกรรมการ", bind_next=True)
+        add_signature(d, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
+        add_signature(d, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
+        add_signature(d, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
+
+    add_paginated_items(doc, items, sign_block_page5, include_details=True,
+                        money_text=f"จำนวนเงินตัวอักษร  {baht_text(total)}",
+                        heading="คณะกรรมการกำหนดราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ")
 
     out = io.BytesIO()
     doc.save(out)
@@ -540,41 +619,77 @@ def build_docx(data):
     return out.read()
 
 
-def convert_docx_to_pdf(docx_path: Path, pdf_path: Path) -> bool:
-    # Try docx2pdf (uses Microsoft Word COM on Windows, LibreOffice elsewhere)
+
+
+def swap_font_for_pdf(docx_bytes, from_font="TH SarabunPSK", to_font="TH Sarabun New"):
+    """Replace font name in the PDF-conversion copy only (the downloaded Word file is untouched).
+    Maps the Word font 'TH SarabunPSK' to 'TH Sarabun New' which is the SIPA font bundled in
+    fonts/ and installed in the Docker container, so LibreOffice renders Thai text identically."""
+    import io, zipfile
+    src = io.BytesIO(docx_bytes)
+    dst = io.BytesIO()
+    with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename.endswith('.xml') or item.filename.endswith('.rels'):
+                try:
+                    text = data.decode('utf-8')
+                    text = text.replace(from_font, to_font)
+                    data = text.encode('utf-8')
+                except Exception:
+                    pass
+            zout.writestr(item, data)
+    return dst.getvalue()
+
+
+def build_pdf(data):
+    """Generate DOCX then convert to PDF using Microsoft Word (docx2pdf) for pixel-perfect output"""
+    import subprocess, tempfile
+    docx_bytes = build_docx(data)
+    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
+        f.write(docx_bytes)
+        tmp_docx = f.name
+    tmp_pdf = tmp_docx.replace('.docx', '.pdf')
+
+    # Try docx2pdf (uses Word COM on Windows — exact same output as Word "Save As PDF")
     try:
         from docx2pdf import convert
-        convert(str(docx_path), str(pdf_path))
-        if pdf_path.exists():
-            return True
+        convert(tmp_docx, tmp_pdf)
+        if Path(tmp_pdf).exists():
+            pdf_bytes = Path(tmp_pdf).read_bytes()
+            Path(tmp_docx).unlink(missing_ok=True)
+            Path(tmp_pdf).unlink(missing_ok=True)
+            return pdf_bytes, True
     except Exception:
         pass
 
-    # Fallback: LibreOffice headless
-    soffice_candidates = [
-        "soffice",
-        "libreoffice",
-        r"C:\Program Files\LibreOffice\program\soffice.exe",
-        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
-    ]
-    for exe in soffice_candidates:
+    # Fallback: LibreOffice (swap font for compatibility)
+    pdf_docx_bytes = swap_font_for_pdf(docx_bytes)
+    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
+        f.write(pdf_docx_bytes)
+        tmp_docx2 = f.name
+    tmp_dir = Path(tmp_docx2).parent
+    for exe in ['soffice', 'libreoffice',
+                r'C:\Program Files\LibreOffice\program\soffice.exe',
+                r'C:\Program Files (x86)\LibreOffice\program\soffice.exe']:
         try:
             result = subprocess.run(
-                [exe, "--headless", "--convert-to", "pdf", "--outdir", str(pdf_path.parent), str(docx_path)],
-                capture_output=True,
-                timeout=120,
+                [exe, '--headless', '--convert-to', 'pdf', '--outdir', str(tmp_dir), tmp_docx2],
+                capture_output=True, timeout=120,
             )
-            if result.returncode == 0:
-                generated = docx_path.with_suffix(".pdf")
-                if generated.exists() and generated != pdf_path:
-                    generated.rename(pdf_path)
-                if pdf_path.exists():
-                    return True
+            tmp_pdf2 = tmp_docx2.replace('.docx', '.pdf')
+            if result.returncode == 0 and Path(tmp_pdf2).exists():
+                pdf_bytes = Path(tmp_pdf2).read_bytes()
+                Path(tmp_docx2).unlink(missing_ok=True)
+                Path(tmp_pdf2).unlink(missing_ok=True)
+                Path(tmp_docx).unlink(missing_ok=True)
+                return pdf_bytes, True
         except Exception:
             continue
 
-    return False
-
+    Path(tmp_docx).unlink(missing_ok=True)
+    Path(tmp_docx2).unlink(missing_ok=True)
+    return None, False
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -593,35 +708,46 @@ class Handler(BaseHTTPRequestHandler):
         self.serve_file(target)
 
     def do_POST(self):
-        if self.path not in ("/generate", "/generate-pdf"):
+        if self.path == "/generate-pdf":
+            return self.handle_generate_pdf()
+        if self.path != "/generate":
             self.send_error(404)
             return
         length = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(length) or b"{}")
         docx_bytes = build_docx(payload)
         safe_project = re.sub(r"[^0-9A-Za-zก-๙._ -]+", "", clean_text(payload.get("project"), "เอกสารขอซื้อขอจ้าง")).strip()
-        base_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_project[:50] or 'procurement'}-{uuid.uuid4().hex[:6]}"
-        docx_path = GENERATED_DIR / f"{base_name}.docx"
+        filename = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_project[:50] or 'procurement'}-{uuid.uuid4().hex[:6]}.docx"
+        output_path = GENERATED_DIR / filename
+        output_path.write_bytes(docx_bytes)
+        body = json.dumps({"ok": True, "file": f"/generated/{filename}", "filename": filename}, ensure_ascii=False).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+    def handle_generate_pdf(self):
+        length = int(self.headers.get("Content-Length", 0))
+        payload = json.loads(self.rfile.read(length) or b"{}")
+        # First generate DOCX
+        docx_bytes = build_docx(payload)
+        safe_project = re.sub(r"[^0-9A-Za-zก-๙._ -]+", "", clean_text(payload.get("project"), "procurement")).strip()
+        base_name = f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{safe_project[:40] or 'procurement'}-{uuid.uuid4().hex[:6]}"
+        docx_filename = base_name + ".docx"
+        pdf_filename = base_name + ".pdf"
+        docx_path = GENERATED_DIR / docx_filename
         docx_path.write_bytes(docx_bytes)
-
-        if self.path == "/generate-pdf":
-            pdf_path = GENERATED_DIR / f"{base_name}.pdf"
-            if not convert_docx_to_pdf(docx_path, pdf_path):
-                self.send_error(500, "PDF conversion failed — install docx2pdf or LibreOffice")
-                return
-            body = json.dumps({
-                "ok": True,
-                "file": f"/generated/{pdf_path.name}",
-                "filename": pdf_path.name,
-                "docxFile": f"/generated/{docx_path.name}",
-            }, ensure_ascii=False).encode("utf-8")
+        # Convert to PDF
+        pdf_bytes, ok = build_pdf(payload)
+        if ok:
+            pdf_path = GENERATED_DIR / pdf_filename
+            pdf_path.write_bytes(pdf_bytes)
+            body = json.dumps({"ok": True, "file": f"/generated/{pdf_filename}", "filename": pdf_filename, "docxFile": f"/generated/{docx_filename}"}, ensure_ascii=False).encode("utf-8")
         else:
-            body = json.dumps({
-                "ok": True,
-                "file": f"/generated/{docx_path.name}",
-                "filename": docx_path.name,
-            }, ensure_ascii=False).encode("utf-8")
-
+            # Fallback: return docx info with error note
+            body = json.dumps({"ok": False, "file": f"/generated/{docx_filename}", "filename": docx_filename, "error": "PDF conversion failed"}, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -647,7 +773,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         if attachment:
             encoded_name = quote(target.name)
-            self.send_header("Content-Disposition", f"attachment; filename=\"document.docx\"; filename*=UTF-8''{encoded_name}")
+            fallback_name = "document" + target.suffix
+            self.send_header("Content-Disposition", f"attachment; filename=\"{fallback_name}\"; filename*=UTF-8''{encoded_name}")
         self.end_headers()
         self.wfile.write(data)
 

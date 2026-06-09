@@ -18,4 +18,4 @@ RUN mkdir -p /usr/share/fonts/truetype/thsarabun \
     && fc-cache -f
 
 ENV HOST=0.0.0.0
-CMD ["python", "server.py"]
+CMD ["python", "server-fixed.py"]

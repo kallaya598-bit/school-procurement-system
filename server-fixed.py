@@ -263,7 +263,9 @@ def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15,
     table.style = "Table Grid"
     set_table_width(table, sum(widths))
     set_table_fixed_layout(table, widths)
-    set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
+    # ลดระยะขอบบน-ล่างในเซลล์ ให้แถวเตี้ยลง (LibreOffice เรนเดอร์แถวสูงกว่า Word)
+    # เพื่อให้ตาราง 15 แถว + ลายเซ็น พอดีในหน้าเดียว
+    set_table_cell_margins(table, top=32, start=90, bottom=32, end=90)
     for i, header in enumerate(headers):
         cell = table.cell(0, i)
         cell.text = header
@@ -630,10 +632,10 @@ def build_docx(data):
     paragraph(doc, f"งบประมาณ {fmt_money(total)} บาท")
 
     def sign_block_page5(d):
-        add_signature(d, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานคณะกรรมการ", bind_next=True)
-        add_signature(d, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
-        add_signature(d, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
-        add_signature(d, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
+        add_signature(d, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานคณะกรรมการ", bind_next=True, size=15, after=2)
+        add_signature(d, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True, size=15, after=2)
+        add_signature(d, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True, size=15, after=2)
+        add_signature(d, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม", size=15, after=2)
 
     add_paginated_items(doc, items, sign_block_page5, include_details=True,
                         money_text=f"จำนวนเงินตัวอักษร  {baht_text(total)}",

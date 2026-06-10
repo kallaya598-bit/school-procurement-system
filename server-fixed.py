@@ -119,6 +119,30 @@ def set_table_width(table, width_cm):
     tbl_w.set(qn("w:type"), "dxa")
 
 
+def set_table_fixed_layout(table, widths_cm):
+    """บังคับ layout แบบ fixed + กำหนด tblGrid ให้ LibreOffice/Word เคารพความกว้างคอลัมน์
+    (กัน LibreOffice บีบคอลัมน์จนข้อความตัดบรรทัดเป็นหลายบรรทัด ทำให้แถวสูงเกิน)"""
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    # 1) tblLayout = fixed
+    layout = tbl_pr.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(layout)
+    layout.set(qn("w:type"), "fixed")
+    # 2) tblGrid: กำหนดความกว้างแต่ละคอลัมน์ให้ชัดเจน
+    grid = tbl.find(qn("w:tblGrid"))
+    if grid is None:
+        grid = OxmlElement("w:tblGrid")
+        tbl_pr.addnext(grid)
+    for col in list(grid.findall(qn("w:gridCol"))):
+        grid.remove(col)
+    for w in widths_cm:
+        col = OxmlElement("w:gridCol")
+        col.set(qn("w:w"), str(int(w * 567)))
+        grid.append(col)
+
+
 def set_table_cell_margins(table, top=70, start=90, bottom=70, end=90):
     tbl_pr = table._tbl.tblPr
     margins = tbl_pr.find(qn("w:tblCellMar"))
@@ -238,6 +262,7 @@ def add_items_table(doc, items, include_details=False, min_rows=3, font_size=15,
     table = doc.add_table(rows=rows + extra_rows, cols=len(headers))
     table.style = "Table Grid"
     set_table_width(table, sum(widths))
+    set_table_fixed_layout(table, widths)
     set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
     for i, header in enumerate(headers):
         cell = table.cell(0, i)
@@ -291,6 +316,7 @@ def add_summary_table(doc, total_amount, font_size=14):
     table = doc.add_table(rows=3, cols=6)
     table.style = "Table Grid"
     set_table_width(table, sum(widths))
+    set_table_fixed_layout(table, widths)
     set_table_cell_margins(table, top=75, start=90, bottom=75, end=90)
 
     # Header row

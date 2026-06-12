@@ -606,10 +606,11 @@ def build_docx(data):
     paragraph(doc, f"2.2 {data['inspectCommittee2Name']} ตำแหน่ง {data['inspectCommittee2Position']} กรรมการ  ลงชื่อ.................................")
     paragraph(doc, f"2.3 {data['inspectCommittee3Name']} ตำแหน่ง {data['inspectCommittee3Position']} กรรมการ  ลงชื่อ.................................")
     paragraph(doc, "มีหน้าที่ตรวจรับพัสดุตามใบสั่งซื้อ/ใบสั่งจ้าง หรือเอกสารอื่นที่เกี่ยวข้อง", first_line=1.25)
-    closing_p3 = paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25, line_spacing=1.5)
-    closing_p3.paragraph_format.keep_with_next = True
-    add_signature(doc, data["procurementOfficerName"], "เจ้าหน้าที่", "ลงชื่อ........................................................เจ้าหน้าที่", bind_next=True)
-    add_signature(doc, data["headOfficerName"], "หัวหน้าเจ้าหน้าที่", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่", bind_next=True)
+    # หน้า 3 ไม่มีตารางรายการ ปล่อยให้ลายเซ็นไหลตามธรรมชาติ (ไม่มัดทั้งบล็อก)
+    # กัน Word 2024/WPS ดันทั้งก้อนขึ้นหน้าใหม่จนเกิดช่องว่าง — แต่ละลายเซ็นยังไม่ถูกตัดครึ่ง
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ", first_line=1.25, line_spacing=1.5)
+    add_signature(doc, data["procurementOfficerName"], "เจ้าหน้าที่", "ลงชื่อ........................................................เจ้าหน้าที่")
+    add_signature(doc, data["headOfficerName"], "หัวหน้าเจ้าหน้าที่", "ลงชื่อ........................................................หัวหน้าเจ้าหน้าที่")
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
     # ===== หน้า 4 =====
@@ -618,11 +619,11 @@ def build_docx(data):
     paragraph(doc, f"ตามบันทึกที่ ศธ04299.37/ราคากลางพัสดุ แต่งตั้งคณะกรรมการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุ ในการ{data['procurementType']} เพื่อ{data['purpose']} นั้น โดยมีรายละเอียดดังนี้", first_line=1.25)
     paragraph(doc, f"จัดซื้อ/จ้าง ด้วยวิธีเฉพาะเจาะจง เนื่องจากมีวงเงินในการจัดซื้อจัดจ้างครั้งหนึ่งไม่เกินวงเงินตามที่กำหนด ราคากลางที่คำนวณได้ {fmt_money(total)} บาท วงเงินที่จะซื้อ/จ้าง {fmt_money(total)} บาท โดยพิจารณาคัดเลือกข้อเสนอโดยใช้เกณฑ์ราคา และผู้ขายจะต้องส่งมอบพัสดุภายในระยะเวลา {data['deliveryDays']} วัน", first_line=1.25)
     paragraph(doc, "บัดนี้ คณะกรรมการจัดทำราคากลาง ได้ดำเนินการจัดทำราคากลางและรายละเอียดคุณลักษณะเฉพาะพัสดุเรียบร้อยแล้ว ดังรายละเอียดที่แนบมาพร้อมนี้", first_line=1.25)
-    closing_p4 = paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25, line_spacing=1.5)
-    closing_p4.paragraph_format.keep_with_next = True
-    add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานกรรมการ", bind_next=True)
-    add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
-    add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ", bind_next=True)
+    # หน้า 4 ไม่มีตารางรายการ ปล่อยให้ลายเซ็นไหลตามธรรมชาติเช่นกัน
+    paragraph(doc, "จึงเรียนมาเพื่อโปรดพิจารณา", first_line=1.25, line_spacing=1.5)
+    add_signature(doc, data["priceCommittee1Name"], data["priceCommittee1Position"], "ลงชื่อ........................................................ประธานกรรมการ")
+    add_signature(doc, data["priceCommittee2Name"], data["priceCommittee2Position"], "ลงชื่อ........................................................กรรมการ")
+    add_signature(doc, data["priceCommittee3Name"], data["priceCommittee3Position"], "ลงชื่อ........................................................กรรมการ")
     add_signature(doc, data["directorName"], "ผู้อำนวยการโรงเรียนนายางกลักพิทยาคม")
 
     # ===== หน้า 5 =====

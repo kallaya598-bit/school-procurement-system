@@ -650,27 +650,6 @@ def build_docx(data):
 
 
 
-def swap_font_for_pdf(docx_bytes, from_font="TH SarabunPSK", to_font="TH Sarabun New"):
-    """Replace font name in the PDF-conversion copy only (the downloaded Word file is untouched).
-    Maps the Word font 'TH SarabunPSK' to 'TH Sarabun New' which is the SIPA font bundled in
-    fonts/ and installed in the Docker container, so LibreOffice renders Thai text identically."""
-    import io, zipfile
-    src = io.BytesIO(docx_bytes)
-    dst = io.BytesIO()
-    with zipfile.ZipFile(src, 'r') as zin, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            data = zin.read(item.filename)
-            if item.filename.endswith('.xml') or item.filename.endswith('.rels'):
-                try:
-                    text = data.decode('utf-8')
-                    text = text.replace(from_font, to_font)
-                    data = text.encode('utf-8')
-                except Exception:
-                    pass
-            zout.writestr(item, data)
-    return dst.getvalue()
-
-
 def build_pdf(data):
     """Generate DOCX then convert to PDF using Microsoft Word (docx2pdf) for pixel-perfect output"""
     import subprocess, tempfile
@@ -692,8 +671,9 @@ def build_pdf(data):
     except Exception:
         pass
 
-    # Fallback: LibreOffice (swap font for compatibility)
-    pdf_docx_bytes = swap_font_for_pdf(docx_bytes)
+    # Fallback: LibreOffice — ใช้ docx เดิมตรงๆ (ฟอนต์ TH SarabunPSK ติดตั้งบนเซิร์ฟเวอร์แล้ว
+    # ผ่าน fonts/THSarabun*.ttf) เพื่อให้ PDF เรนเดอร์ด้วยฟอนต์ตัวเดียวกับ Word → ใกล้เคียงที่สุด
+    pdf_docx_bytes = docx_bytes
     with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
         f.write(pdf_docx_bytes)
         tmp_docx2 = f.name
